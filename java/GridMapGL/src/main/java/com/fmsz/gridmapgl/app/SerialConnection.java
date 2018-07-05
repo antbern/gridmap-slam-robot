@@ -63,7 +63,9 @@ public class SerialConnection implements SerialPortPacketListener {
 	private int[] currentSelectedSensorDegreeResolution = { 2 };
 
 	// Controls
+	private final float[] selectedSpeed = { 100.0f };
 	private final Vec2 arrowPadding = new Vec2(10, 10);
+	private Dir lastDirection = Dir.None;
 
 	public SerialConnection() {
 
@@ -124,11 +126,10 @@ public class SerialConnection implements SerialPortPacketListener {
 				int selectedResolution = sensorDegreeResolutions[currentSelectedSensorDegreeResolution[0]];
 				sendCommand(new byte[] { 0x08, (byte) selectedResolution });
 			}
-			
+
 			if (imgui.button("Home", new Vec2())) {
 				sendCommand(COMMAND_HOME_SENSOR);
 			}
-			
 
 			// imgui.beginColumns("ID", 3, ColumnsFlags.NoResize.getI() | ColumnsFlags.GrowParentContentsSize.getI());
 
@@ -183,34 +184,42 @@ public class SerialConnection implements SerialPortPacketListener {
 
 			if (controlsActive)
 				imgui.popStyleColor(1);
+			
+			// speed select slider
+			imgui.dragFloat("Speed", selectedSpeed, 0.1f, 0.0f, 255.0f, "%.2f", 2f);
 
-			// update speeds
-			float speedLeft = 0, speedRight = 0;
+			// only send to robot if there was a change
+			if (selectedDirection != lastDirection) {
+				lastDirection = selectedDirection;
 
-			switch (selectedDirection) {
-			case Up:
-				speedLeft = speedRight = 2.0f;
-				break;
-			case Down:
-				speedLeft = speedRight = -2.0f;
-				break;
-			case Left:
-				speedLeft = -2.0f;
-				speedRight = 2.0f;
-				break;
-			case Right:
-				speedLeft = 2.0f;
-				speedRight = -2.0f;
-				break;
+				// update speeds
+				float speedLeft = 0, speedRight = 0;
+				float speed = selectedSpeed[0];
 
-			}
+				switch (selectedDirection) {
+				case Up:
+					speedLeft = speedRight = speed;
+					break;
+				case Down:
+					speedLeft = speedRight = -speed;
+					break;
+				case Left:
+					speedLeft = -speed;
+					speedRight = speed;
+					break;
+				case Right:
+					speedLeft = speed;
+					speedRight = -speed;
+					break;
 
-			sendSpeedCommand(true, speedLeft);
-			sendSpeedCommand(false, speedRight);
+				default:
+					break;
 
-			// take action based on input here!
-			if (selectedDirection != Dir.None) {
-				System.out.println(selectedDirection);
+				}
+
+				// send speed values to robot
+				sendSpeedCommand(true, speedLeft);
+				sendSpeedCommand(false, speedRight);
 			}
 
 		}

@@ -90,6 +90,7 @@ motor_t right = {
 PID leftPID(&left.speed, &left.control_adjust, &left.set_point, 5.0*8*8/2/10/*0.0065*/, /*0.16*8*8/2*/ 0.0, /*0.125/2*/ 62.5 / 10,P_ON_E, DIRECT);
 PID rightPID(&right.speed, &right.control_adjust, &right.set_point, 5.0*8*8/2/10/*0.0065*/, /*0.16*8*8/2*/ 0.0, /*0.125/2*/ 62.5 / 10,P_ON_E, DIRECT);
 
+//#define SPEED_REGULATION
 
 // sensor variables
 unsigned short step_counter = 0, last_step_counter = 0;
@@ -306,9 +307,9 @@ void initSensor(VL53L0X sensor, uint8_t addr){
 */
 
 //unsigned short frontAngle = 0, backAngle = 0;
-void loop()
-{
-	
+void loop() {
+
+#ifdef SPEED_REGULATION // only calculate speed if it is needed
 	// loop that runns at 10 Hz
 	if((millis() - lastTimeMillis) > SPEED_LOOP_TIMING){
 		lastTimeMillis = millis();
@@ -318,9 +319,11 @@ void loop()
 
 		//Serial.println(analogRead(A0));
 	}
-	
+#endif
+
 	doMotorLogic(&left);
 	doMotorLogic(&right);
+
 	
 	//Serial.println(left.speed);
 	 
@@ -405,8 +408,12 @@ void loop()
 		
 		// check if we crossed any halfway
 		if(last_step_counter % (STEPS_PER_ROTATION / 2) > (last_step_counter + next_steps) % (STEPS_PER_ROTATION / 2)){
-			// yes, send message to indicate that
-			sendData(-1, -1, -1);
+			// yes, send message (with odometry information) to indicate that
+			sendData(-1, left.odometry_counter, right.odometry_counter);
+			
+			// reset odometry counters
+			left.odometry_counter = 0;
+			right.odometry_counter = 0;
 			
 			// this allows the code to either do repeated measurements (if doContinously = 1) or only do a measurement once (if doContinously = 0 and doOnce is set to 1 once)
 			doOnce = doContinously;
@@ -459,6 +466,8 @@ void calculateMotorSpeed(motor_t* motor){
 }
 
 void doMotorLogic(motor_t* motor){
+
+#ifdef SPEED_REGULATION // only do speed regulation when wanted
 	if(motor->pid->Compute()){
 		
 		// add adjustment to control value
@@ -482,6 +491,11 @@ void doMotorLogic(motor_t* motor){
 		Serial.println(motorLeftControl);
 		*/
 	}
+#else // otherwise, use the set_point variable as the pwm signal instead of the desired speed
+	motor->control_output = constrain(motor->set_point, -255, 255);
+	writeMotorControl(motor);
+	
+#endif
 }
 
 

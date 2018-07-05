@@ -18,4 +18,17 @@ package com.fmsz.gridmapgl.slam;
 /** Class for storing the odometry measurement associated with this observation */
 public class Odometry {
 	// TODO: implement
+	
+	public Odometry(int leftCount, int rightCount) {
+		
+	}
+	
+	
+	/**
+	 * Applies this Odometry to the given pose, thus updating it
+	 * @param p the Pose to change
+	 */
+	public void apply(Pose p) {
+		
+	}
 }

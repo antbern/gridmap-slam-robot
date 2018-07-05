@@ -21,6 +21,7 @@ import java.io.InputStream;
 
 import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.Observation;
+import com.fmsz.gridmapgl.slam.Odometry;
 import com.fmsz.gridmapgl.slam.SensorModel;
 import com.fmsz.gridmapgl.slam.TimeFrame;
 
@@ -54,10 +55,12 @@ public class SerialConnectionThread extends Thread {
 
 						// if this is a "new packet" indicator?
 						if (steps < 0) {
+							// this packet also holds the odometry information
+							
 							// post the old packet, start creating a new one
-							DataEventHandler.getInstance().publish(new TimeFrame(currentObservation, null));
+							DataEventHandler.getInstance().publish(new TimeFrame(currentObservation, new Odometry(frontDistance, backDistance)));
 							currentObservation = new Observation();
-							// System.out.println("New Observation");
+
 						} else {
 							// add a measurement for the front sensor
 							float rad = steps / (float) STEPS_PER_REVOLUTION * MathUtil.PI2;
