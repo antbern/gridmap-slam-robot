@@ -19,6 +19,9 @@ public class MathUtil {
 	public static final float PI = (float) Math.PI;
 	public static final float PI2 = (float) Math.PI * 2;
 
+	public static final double RAD_TO_DEG = 180.0 / Math.PI;
+	public static final double DEG_TO_RAD = Math.PI / 180.0;
+
 	/**
 	 * Methods for calculating sin and cos with float values instead of using double
 	 */

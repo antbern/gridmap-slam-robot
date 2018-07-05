@@ -113,8 +113,8 @@ public class SLAM {
 		// resample
 		double neff = calculateNeff();
 
-		//if (neff < numParticles / 2)
-		//	resample();
+		// if (neff < numParticles / 2)
+		// resample();
 
 		return neff;
 
@@ -146,10 +146,13 @@ public class SLAM {
 	private Pose sampleMotionModel(Pose x, Odometry u) {
 		Pose p = new Pose(x);
 		// apply some noise
-		p.x += 0.05f * rand.nextGaussian();
-		p.y += 0.05f * rand.nextGaussian();
+		// p.x += 0.05f * rand.nextGaussian();
+		// p.y += 0.05f * rand.nextGaussian();
 
 		// p.theta += 2.0 / 180.0 * Math.PI * rand.nextGaussian();
+
+		u.apply(p);
+
 		return p;
 	}
 

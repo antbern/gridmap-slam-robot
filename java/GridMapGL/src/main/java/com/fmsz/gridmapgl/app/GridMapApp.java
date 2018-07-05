@@ -23,6 +23,7 @@ import com.fmsz.gridmapgl.graphics.Camera;
 import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
+import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.GridMap.GridMapData;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
@@ -126,7 +127,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	public void onHandleData(TimeFrame frame) {
 		lastObservation = frame.z;
 
-		neff = slam.update(lastObservation, null);
+		neff = slam.update(lastObservation, frame.u);
 
 		// only resample if supposed to
 		if (automaticResampling[0] && neff < slam.getParticles().size() / 2)
@@ -363,8 +364,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 	private void renderPose(Pose pose, Color col) {
 		rend.circle(pose.x, pose.y, 0.05f, col, 10);
-		// rend.rect(pose.x, pose.y, pose.x + 0.1f * MathUtil.cos(pose.theta), pose.y + 0.1f * MathUtil.sin(pose.theta),
-		// Color.BLACK.toFloatBits());
+		rend.line(pose.x, pose.y, pose.x + 0.1f * MathUtil.cos(pose.theta), pose.y + 0.1f * MathUtil.sin(pose.theta), Color.BLACK);
 	}
 
 	private void calculateCombined() {

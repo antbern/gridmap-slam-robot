@@ -22,12 +22,11 @@ import java.io.InputStream;
 import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Odometry;
+import com.fmsz.gridmapgl.slam.Robot;
 import com.fmsz.gridmapgl.slam.SensorModel;
 import com.fmsz.gridmapgl.slam.TimeFrame;
 
 public class SerialConnectionThread extends Thread {
-
-	private static final int STEPS_PER_REVOLUTION = 96 * 5 * 2;
 
 	private InputStream is;
 	private Observation currentObservation;
@@ -56,14 +55,18 @@ public class SerialConnectionThread extends Thread {
 						// if this is a "new packet" indicator?
 						if (steps < 0) {
 							// this packet also holds the odometry information
-							
+
 							// post the old packet, start creating a new one
-							DataEventHandler.getInstance().publish(new TimeFrame(currentObservation, new Odometry(frontDistance, backDistance)));
+							DataEventHandler.getInstance()
+									.publish(new TimeFrame(currentObservation, new Odometry(frontDistance, backDistance)));
 							currentObservation = new Observation();
 
 						} else {
 							// add a measurement for the front sensor
-							float rad = steps / (float) STEPS_PER_REVOLUTION * MathUtil.PI2;
+							float rad = steps / (float) Robot.SENSOR_STEPS_PER_REVOLUTION * MathUtil.PI2;
+							// correct for the fact that the sensor is oriented with an angle offset
+							rad += Robot.SENSOR_ANGLE_OFFSET;
+
 							float dist = frontDistance / 1000f;
 							if (dist > SensorModel.SENSOR_NO_RESPONSE_THRESHHOLD)
 								currentObservation.addMeasurement(rad, SensorModel.SENSOR_MAX_RANGE, false);

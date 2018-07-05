@@ -184,7 +184,7 @@ public class SerialConnection implements SerialPortPacketListener {
 
 			if (controlsActive)
 				imgui.popStyleColor(1);
-			
+
 			// speed select slider
 			imgui.dragFloat("Speed", selectedSpeed, 0.1f, 0.0f, 255.0f, "%.2f", 2f);
 
