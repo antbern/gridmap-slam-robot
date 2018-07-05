@@ -1,0 +1,449 @@
+/* This example shows how to get single-shot range
+ measurements from the VL53L0X. The sensor can optionally be
+ configured with different ranging profiles, as described in
+ the VL53L0X API user manual, to get better performance for
+ a certain application. This code is based on the four
+ "SingleRanging" examples in the VL53L0X API.
+
+ The range readings are in units of mm. */
+
+#include <Wire.h>
+#include <VL53L0X.h>
+#include <Servo.h>
+#include "PID_v1.h"
+#include <math.h>
+
+VL53L0X frontSensor;
+VL53L0X backSensor;
+
+#define FRONT_SENSOR_SHUT A3
+#define BACK_SENSOR_SHUT A2
+
+// stepper motor defines
+#define STEPPER_EN A1
+#define STEPPER_DIR A0
+#define STEPPER_STEP 12
+
+#define MICROSTEPPING 2
+#define STEPS_PER_ROTATION (96*5*MICROSTEPPING)
+
+// motor defines
+#define MOTOR_RIGHT_EN 6
+#define MOTOR_RIGHT_DIRA 7
+#define MOTOR_RIGHT_DIRB 8
+#define MOTOR_RIGHT_ENCA 2 
+#define MOTOR_RIGHT_ENCB 4
+
+#define MOTOR_LEFT_EN 11
+#define MOTOR_LEFT_DIRA 9
+#define MOTOR_LEFT_DIRB 10
+#define MOTOR_LEFT_ENCA 3 
+#define MOTOR_LEFT_ENCB 5
+
+long lastTimeMillis = 0;
+
+
+long motorLeftCounter = 0, motorRightCounter = 0;
+double motorLeftControl = 0, motorRightControl = 0;
+
+double motorLeftSetPoint = 3.5, motorRightSetPoint = 3.5;
+double motorLeftSpeed = 0, motorRightSpeed = 0;
+double motorLeftControlAdjust = 0, motorRightControlAdjust = 0;
+
+//PID	motorLeftPID(&motorLeftSpeed, &motorLeftControlAdjust, &motorLeftSetPoint, 60/*0.0065*/, 5, /*0.125/2*/ 25,P_ON_E, DIRECT);
+PID	motorLeftPID(&motorLeftSpeed, &motorLeftControlAdjust, &motorLeftSetPoint, 5*8*8/2/*0.0065*/, 0.16*8*8/2, /*0.125/2*/ 62.5,P_ON_E, DIRECT);
+PID	motorRightPID(&motorRightSpeed, &motorRightControlAdjust, &motorRightSetPoint, 5*8*8/2/*0.0065*/, 0.16*8*8/2, /*0.125/2*/ 62.5,P_ON_E, DIRECT);
+
+// Uncomment this line to use long range mode. This
+// increases the sensitivity of the sensor and extends its
+// potential range, but increases the likelihood of getting
+// an inaccurate reading because of reflections from objects
+// other than the intended target. It works best in dark
+// conditions.
+
+#define LONG_RANGE
+
+
+// Uncomment ONE of these two lines to get
+// - higher speed at the cost of lower accuracy OR
+// - higher accuracy at the cost of lower speed
+
+
+//#define HIGH_SPEED
+//#define HIGH_ACCURACY
+
+
+
+void setup()
+{
+	Serial.begin(115200);
+	Wire.begin();
+
+	// stepper motor:
+	pinMode(STEPPER_EN, OUTPUT);
+	pinMode(STEPPER_DIR, OUTPUT);
+	pinMode(STEPPER_STEP, OUTPUT);
+	
+	
+	// disable motor
+	digitalWrite(STEPPER_EN, HIGH);
+	
+	// select rotational direction
+	digitalWrite(STEPPER_DIR, HIGH); 
+
+
+	// disable both sensors first
+	pinMode(FRONT_SENSOR_SHUT, OUTPUT);
+	pinMode(BACK_SENSOR_SHUT, OUTPUT);
+
+	digitalWrite(FRONT_SENSOR_SHUT, LOW);
+	digitalWrite(BACK_SENSOR_SHUT, LOW);
+
+	// initialize front sensor
+	digitalWrite(FRONT_SENSOR_SHUT, HIGH); // enable
+	frontSensor.init();
+	frontSensor.setTimeout(500);
+	frontSensor.setAddress(0x29 + 0x02);
+  
+	digitalWrite(BACK_SENSOR_SHUT, HIGH); // enable
+	backSensor.init();
+	backSensor.setTimeout(500);
+	backSensor.setAddress(0x29 + 0x04);
+
+	
+#if defined LONG_RANGE
+	// lower the return signal rate limit (default is 0.25 MCPS)
+	frontSensor.setSignalRateLimit(0.1);
+	backSensor.setSignalRateLimit(0.1);
+	// increase laser pulse periods (defaults are 14 and 10 PCLKs)
+	frontSensor.setVcselPulsePeriod(VL53L0X::VcselPeriodPreRange, 18);
+	backSensor.setVcselPulsePeriod(VL53L0X::VcselPeriodPreRange, 18);
+
+	frontSensor.setVcselPulsePeriod(VL53L0X::VcselPeriodFinalRange, 14);
+	backSensor.setVcselPulsePeriod(VL53L0X::VcselPeriodFinalRange, 14);
+#endif
+
+#if defined HIGH_SPEED
+	// reduce timing budget to 20 ms (default is about 33 ms)
+	frontSensor.setMeasurementTimingBudget(20000);
+	backSensor.setMeasurementTimingBudget(20000);
+#elif defined HIGH_ACCURACY
+	// increase timing budget to 200 ms
+	frontSensor.setMeasurementTimingBudget(200000);
+	backSensor.setMeasurementTimingBudget(200000);
+#endif
+
+	// sensors initialized, lets init the motors
+	// pin modes
+	pinMode(MOTOR_LEFT_EN, OUTPUT);
+	pinMode(MOTOR_LEFT_DIRA, OUTPUT);
+	pinMode(MOTOR_LEFT_DIRB, OUTPUT);
+	pinMode(MOTOR_LEFT_ENCA, INPUT);
+	pinMode(MOTOR_LEFT_ENCB, INPUT);
+	
+	pinMode(MOTOR_RIGHT_EN, OUTPUT);
+	pinMode(MOTOR_RIGHT_DIRA, OUTPUT);
+	pinMode(MOTOR_RIGHT_DIRB, OUTPUT);
+	pinMode(MOTOR_RIGHT_ENCA, INPUT);
+	pinMode(MOTOR_RIGHT_ENCB, INPUT);
+	
+	// select direction
+	//digitalWrite(MOTOR_LEFT_DIRA, LOW);
+	//digitalWrite(MOTOR_LEFT_DIRB, HIGH);
+	//analogWrite(MOTOR_LEFT_EN, motorLeftControl);
+	
+	// attach interrupts to encoders
+	attachInterrupt(digitalPinToInterrupt(MOTOR_LEFT_ENCA), motorLeftEncoder, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(MOTOR_RIGHT_ENCA), motorRightEncoder, CHANGE);
+	
+	// last thing, start the continous measurement
+	//frontSensor.startContinuous();
+	//backSensor.startContinuous();
+	
+	lastTimeMillis = millis();
+	motorLeftPID.SetOutputLimits(-255, 255);
+	motorLeftPID.SetSampleTime(100);
+	motorLeftPID.SetMode(AUTOMATIC);
+	
+	motorRightPID.SetOutputLimits(-255, 255);
+	motorRightPID.SetSampleTime(100);
+	motorRightPID.SetMode(AUTOMATIC);
+	
+}
+
+void motorLeftEncoder(){
+	if(digitalRead(MOTOR_LEFT_ENCA) == digitalRead(MOTOR_LEFT_ENCB))
+		motorLeftCounter++;
+	else
+		motorLeftCounter--;
+}
+
+void motorRightEncoder(){
+	if(digitalRead(MOTOR_RIGHT_ENCA) == digitalRead(MOTOR_RIGHT_ENCB))
+		motorRightCounter++;
+	else
+		motorRightCounter--;
+}
+
+/*
+void initSensor(VL53L0X sensor, uint8_t addr){
+
+	sensor.init();
+	sensor.setTimeout(500);
+	sensor.setAddress(addr);
+  
+#if defined LONG_RANGE
+	// lower the return signal rate limit (default is 0.25 MCPS)
+	sensor.setSignalRateLimit(0.1);
+	// increase laser pulse periods (defaults are 14 and 10 PCLKs)
+	sensor.setVcselPulsePeriod(VL53L0X::VcselPeriodPreRange, 18);
+	sensor.setVcselPulsePeriod(VL53L0X::VcselPeriodFinalRange, 14);
+#endif
+
+#if defined HIGH_SPEED
+	// reduce timing budget to 20 ms (default is about 33 ms)
+	sensor.setMeasurementTimingBudget(20000);
+#elif defined HIGH_ACCURACY
+	// increase timing budget to 200 ms
+	sensor.setMeasurementTimingBudget(200000);
+#endif
+}
+*/
+
+unsigned short frontAngle = 0, backAngle = 0;
+unsigned short step_counter = 0, last_step_counter = 0;
+
+char doOnce = 0;
+char doContinously = 0;
+
+// the number of steps needed for a resolution of 2 degrees
+short next_steps = (short) (STEPS_PER_ROTATION * (2.0f / 360.0f));
+void loop()
+{
+	
+	// loop that runns at 10 Hz
+	if((millis() - lastTimeMillis) > 1000 / 10){
+		lastTimeMillis = millis();
+		//Serial.println(motorLeftCounter / 32 / 30);
+		
+		/*
+		if(motorLeftCounter < 4*32*30/10)
+			motorLeftControl++;
+		else if(motorLeftCounter > 4*32*30/10)
+			motorLeftControl--;
+		
+		motorLeftControl = constrain(motorLeftControl, 0, 255);
+		
+		Serial.print(motorLeftCounter);
+		Serial.print(':');
+		Serial.println(motorLeftControl);
+		*/
+		
+		// left wheel		
+		double revs = (double)motorLeftCounter / (32 * 30);
+		double revs_per_second = revs / 0.1;
+		
+		motorLeftSpeed = revs_per_second * 0.95 + motorLeftSpeed * 0.05;
+		//motorLeftSpeed = revs_per_second * 0.2 + motorLeftSpeed * 0.8;
+		motorLeftCounter = 0;
+		
+		// right wheel
+		revs = (double)motorRightCounter / (32 * 30);
+		revs_per_second = revs / 0.1;
+		
+		motorRightSpeed = revs_per_second * 0.95 + motorRightSpeed * 0.05;
+		//motorLeftSpeed = revs_per_second * 0.2 + motorLeftSpeed * 0.8;
+		motorRightCounter = 0;
+		
+		
+		
+		
+		
+		// do calculations to achieve desired speed here
+		
+		//analogWrite(MOTOR_LEFT_EN, motorLeftControl);
+	}
+	
+	
+	
+	if(motorLeftPID.Compute()){
+		
+		// add adjustment to control value
+		motorLeftControl += motorLeftControlAdjust * 0.1;
+		
+		// cap control value
+		motorLeftControl = constrain(motorLeftControl, -255, 255);
+		
+		//motorLeftControl = 64;
+		
+		
+		writeMotorLeft(motorLeftControl);
+		//analogWrite(MOTOR_LEFT_EN, (int)motorLeftControl);
+		Serial.print('L');
+		Serial.print(motorLeftSpeed);
+		Serial.print(':');
+		Serial.print(motorLeftSetPoint);
+		Serial.print(':');
+		Serial.print(motorLeftControlAdjust);
+		Serial.print(':');
+		Serial.println(motorLeftControl);
+   
+	}
+	
+	if(motorRightPID.Compute()){
+		
+		// add adjustment to control value
+		motorRightControl += motorRightControlAdjust * 0.1;
+		
+		// cap control value
+		motorRightControl = constrain(motorRightControl, -255, 255);
+		
+		// write value
+		writeMotorRight(motorRightControl);
+		
+		Serial.print('R');
+		Serial.print(motorRightSpeed);
+		Serial.print(':');
+		Serial.print(motorRightSetPoint);
+		Serial.print(':');
+		Serial.print(motorRightControlAdjust);
+		Serial.print(':');
+		Serial.println(motorRightControl);
+   
+	}
+
+  
+	if(Serial.available() > 0){
+		motorLeftSetPoint = (double)Serial.parseFloat();
+		motorRightSetPoint = motorLeftSetPoint;
+		while(Serial.available() > 0) Serial.read();
+	}
+	
+	// check if there are any incoming bytes on the serial port
+	if(Serial.available() > 0){
+		// read one byte
+		char input = Serial.read();
+		
+		if(input == 0x01 || input == 'O'){ // "do once"-command?
+			doOnce = 1;
+			digitalWrite(STEPPER_EN, LOW);
+		}else if (input == 0x02 || input == 'E'){ // "enable continous"-command?
+			doContinously = 1;
+			doOnce = 1;
+			digitalWrite(STEPPER_EN, LOW);
+		}else if (input == 0x04 || input == 'D'){ // "disable continous"-command?
+			doContinously = 0;
+		}else if (input == 0x08){ // "disable continous"-command?
+			char d;
+			// wait for next byte
+			while ((d = Serial.read()) == -1);
+			
+			next_steps = (short) (STEPS_PER_ROTATION * ((float)d / 360.0f));
+			
+		}
+		
+	}
+
+ 
+	
+	// only do measurement if 
+	if(doOnce != 0){
+				
+		// move the motor
+		step_motor(next_steps);
+		
+		// store the number of steps before increasing
+		last_step_counter = step_counter;
+		
+		// increase the counter and "loop back" if we exceed the number of steps for one compleete sensor revolution
+		step_counter = (step_counter + next_steps) % STEPS_PER_ROTATION;
+		
+		
+		// check if we crossed any halfway
+		if(last_step_counter % (STEPS_PER_ROTATION / 2) > (last_step_counter + next_steps) % (STEPS_PER_ROTATION / 2)){
+			// yes, send message to indicate that
+			sendData(-1, -1, -1);
+			
+			// this allows the code to either do repeated measurements (if doContinously = 1) or only do a measurement once (if doContinously = 0 and doOnce is set to 1 once)
+			doOnce = doContinously;
+			
+			// if stopped, disable the motor
+			if(doOnce == 0)
+				digitalWrite(STEPPER_EN, HIGH);
+		}
+		
+		// take and send the actual measurements
+		sendData(step_counter, frontSensor.readRangeContinuousMillimeters(), backSensor.readRangeContinuousMillimeters());
+		
+		/*
+		short lastFrontAngle = frontAngle % 180;
+		
+		frontAngle = (short) (step_counter * 360L / STEPS_PER_ROTATION);
+		backAngle = (frontAngle + 180) % 360;
+		
+		// did we cross the 360 boudary?
+		if(lastFrontAngle > (frontAngle % 180))
+			sendData(500, 0);
+		
+		*/
+		/*
+		Serial.print(next_steps);
+		Serial.print(':');
+		Serial.print(step_counter);
+		Serial.print(':');
+		Serial.println(frontAngle);
+		Serial.println();
+		*/
+	
+	}
+	
+}
+void step_motor(unsigned short steps){
+	for(unsigned short i = 0; i < steps; i++){
+		digitalWrite(STEPPER_STEP, HIGH);
+		delayMicroseconds(1000);
+		digitalWrite(STEPPER_STEP, LOW);
+		delayMicroseconds(1000);
+	}
+}
+
+inline void sendData(short steps, short frontDistance, short backDistance){
+	Serial.write(0x55); // start byte
+	Serial.write((steps >> 8) & 0xff);
+	Serial.write((steps >> 0) & 0xff); 
+	Serial.write((frontDistance >> 8) & 0xff);
+	Serial.write((frontDistance >> 0) & 0xff);
+	Serial.write((backDistance >> 8) & 0xff);
+	Serial.write((backDistance >> 0) & 0xff);
+ 	
+/*
+  Serial.print(angle);
+  Serial.print(':');
+  Serial.println(distance);
+  */
+}
+
+
+void writeMotorLeft(float control){
+	if(control >= 0){
+		digitalWrite(MOTOR_LEFT_DIRA, HIGH);
+		digitalWrite(MOTOR_LEFT_DIRB, LOW);
+		analogWrite(MOTOR_LEFT_EN, (int)round(control));
+	}else{
+		digitalWrite(MOTOR_LEFT_DIRA, LOW);
+		digitalWrite(MOTOR_LEFT_DIRB, HIGH);
+		analogWrite(MOTOR_LEFT_EN, -(int)round(control));
+	}
+}
+
+void writeMotorRight(float control){
+	if(control >= 0){
+		digitalWrite(MOTOR_RIGHT_DIRA, HIGH);
+		digitalWrite(MOTOR_RIGHT_DIRB, LOW);
+		analogWrite(MOTOR_RIGHT_EN, (int)round(control));
+	}else{
+		digitalWrite(MOTOR_RIGHT_DIRA, LOW);
+		digitalWrite(MOTOR_RIGHT_DIRB, HIGH);
+		analogWrite(MOTOR_RIGHT_EN, -(int)round(control));
+	}
+}
