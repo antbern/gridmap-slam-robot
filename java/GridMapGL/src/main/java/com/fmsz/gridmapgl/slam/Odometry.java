@@ -15,12 +15,15 @@
  *******************************************************************************/
 package com.fmsz.gridmapgl.slam;
 
+import java.util.Random;
+
 import com.fmsz.gridmapgl.math.MathUtil;
 
 /** Class for storing the odometry measurement associated with this observation */
 public class Odometry {
 
 	double dCenter, dTheta;
+	Random rand = new Random();
 
 	public Odometry(int leftCount, int rightCount) {
 		// http://faculty.salina.k-state.edu/tim/robotics_sg/Control/kinematics/odometry.html
@@ -45,9 +48,15 @@ public class Odometry {
 	 *            the Pose to change
 	 */
 	public void apply(Pose p) {
-		// do this very simple for now, TODO: add noise
-		p.x += MathUtil.cos(p.theta) * dCenter;
-		p.y += MathUtil.sin(p.theta) * dCenter;
-		p.theta = (float) MathUtil.angleConstrain(p.theta + dTheta);
+		// do this very simple for now
+		
+		//TODO: add noise
+		double d = dCenter + rand.nextGaussian() * 0.02;
+		double theta = dTheta + rand.nextGaussian() * 5 * MathUtil.DEG_TO_RAD;
+
+		// apply movement
+		p.x += MathUtil.cos(p.theta) * d;
+		p.y += MathUtil.sin(p.theta) * d;
+		p.theta = (float) MathUtil.angleConstrain(p.theta + theta);
 	}
 }
