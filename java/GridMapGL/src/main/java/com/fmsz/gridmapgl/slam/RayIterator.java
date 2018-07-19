@@ -21,6 +21,7 @@ import glm_.vec2.Vec2i;
 
 /**
  * A class for iterating over all grid cells that overlap with a specific line.
+ * Lots of inspiration taken from {@link https://playtechs.blogspot.com/2007/03/raytracing-on-grid.html}
  * 
  * @author Anton
  *
