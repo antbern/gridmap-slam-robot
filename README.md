@@ -4,7 +4,7 @@ This is the source code and (eventually) documentation for my differential drive
 
 In the future i intend to possibly move away from my own implementation of the SLAM algorithm to an existing one and maybe even to ROS.
 
-[Here](https://photos.app.goo.gl/9LCzzc31TMR4rb7r5) is a link to a video of the robot in action. As you can see, the implementation cind of works, but still need much improvement to really be useable. My goal is to eventually have a robot that can wander around autonomously, creating a map of the environment!
+[Here](https://photos.app.goo.gl/9LCzzc31TMR4rb7r5) is a link to a video of the robot in action. As you can see, the implementation kind of works, but still need much improvement to be really useable. My goal is to eventually have a robot that can wander around autonomously, creating a map of the environment!
 
 ## Useful links and resources on the subject
 
