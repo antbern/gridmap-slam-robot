@@ -239,6 +239,8 @@ public class GridMap {
 					rays.add(new Vec2i(gridX, gridY));
 				}
 				*/
+				
+				//if(m.wasHit) val = 1-val;
 
 				// multiply all probabilities together
 
@@ -253,6 +255,7 @@ public class GridMap {
 
 		return product;
 	}
+	/*
 
 	public double probabilityOf(GridMapData map, Measurement m, Pose p) {
 
@@ -267,12 +270,13 @@ public class GridMap {
 				System.out.println("Zero @ " + gridX + ", " + gridY);
 				rays.add(new Vec2i(gridX, gridY));
 			}
-			*/
+			*
 
 			return zHit * val + zRandom * 1.0 / SensorModel.SENSOR_MAX_RANGE;
 		}
 		return 0;
 	}
+	*/
 
 	/** Finds the pose that maximizes the observation likelihood using the given pose as a starting point */
 	public Pose findBestPose(GridMapData map, Observation obs, Pose startPose) {

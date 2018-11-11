@@ -63,7 +63,7 @@ public class SerialConnection implements SerialPortPacketListener {
 	private int[] currentSelectedSensorDegreeResolution = { 2 };
 
 	// Controls
-	private final float[] selectedSpeed = { 100.0f };
+	private final float[] selectedSpeed = { 10.0f };
 	private final Vec2 arrowPadding = new Vec2(10, 10);
 	private Dir lastDirection = Dir.None;
 
@@ -186,7 +186,7 @@ public class SerialConnection implements SerialPortPacketListener {
 				imgui.popStyleColor(1);
 
 			// speed select slider
-			imgui.dragFloat("Speed", selectedSpeed, 0.1f, 0.0f, 255.0f, "%.2f", 2f);
+			imgui.dragFloat("Speed", selectedSpeed, 0.01f, 0.0f, 14.0f, "%.2f", 2f);
 
 			// only send to robot if there was a change
 			if (selectedDirection != lastDirection) {

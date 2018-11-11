@@ -151,7 +151,8 @@ public class SLAM {
 
 		// p.theta += 2.0 / 180.0 * Math.PI * rand.nextGaussian();
 
-		u.apply(p);
+		if(u != null)
+			u.apply(p);
 
 		return p;
 	}

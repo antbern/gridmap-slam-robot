@@ -41,56 +41,56 @@ VL53L0X backSensor;
 #define MOTOR_LEFT_ENCA 3 
 #define MOTOR_LEFT_ENCB 5
 
-#define SPEED_LOOP_TIMING (1000.0/10.0)
 
-long lastTimeMillis = 0;
+// pin definitions using port and bit (FASTER :D)
+#define ENC_PORT PIND
+#define LEFT_ENCA_BIT 3
+#define LEFT_ENCB_BIT 5
+
+#define RIGHT_ENCA_BIT 2
+#define RIGHT_ENCB_BIT 4
+
+#define ENC_COUNTS_PER_REV (32 * 30)
+
+double h = 0;
+double last_timer_us = 0;
 
 
+// PID values for the motor controllers
+double Kp = 0.55276367534483;//0.610694929511361;//0.641817786149385 ;//6.458906368104240;//5.061601496636267;//3.286079178973016;
+double Ki = 1.64455966045303;//1.34329498731559;//1.169731890184110 ;//21.544597297186854;//59.064657944882540;//70.241507066863450; 
+double Kd = 0.0101674410396297;//0.0220997968974464;
+double Tf = 1/11.8209539589613;//1/5.57670843490099;
 
+
+typedef struct {
+    double Kp = 0.0;
+    double Ki = 0.0;
+    double Kd = 0.0;
+    double Tf = 0.0;
+
+    double P = 0.0;
+    double I = 0.0;
+    double D = 0.0;
+
+    double e_old = 0.0;
+} PID_t;
 
 // struct defining the motor properties
 typedef struct {
-	// Pin declarations
-	const short PIN_EN, PIN_DIRA, PIN_DIRB, PIN_ENCA, PIN_ENCB;
-	
-	// variables
-	double set_point; /* the desired revolution/s */
-	double control_output; /* the pwm value to control the motor*/
-	double control_adjust; /* the output from the pid */
-	
-	double speed; /* current speed in revolutions/s */
-	long speed_counter; /* counter for determining speed */
- 	long odometry_counter; /* counter for determining distance traveled */
-	
-	void* interruptHandler; /* function pointer to the interrupt routine */
-	
-	PID* pid; /* PID-controller for regulating the motor speed */
+    int32_t current_encoder_counter = 0;       // current encoder count
+    int32_t last_encoder_counter = 0;          // last encoder count, used for calculating rotational speed
+    int32_t odometry_counter = 0;
+	PID_t pid;                                  // PID controller for velocity control
+    double speed_reference = 0;                 // the reference value used for the PID-controller    
+    struct{
+        char PIN_EN, PIN_DIRA, PIN_DIRB;
+    } pins;                                     // struct for the motors' pins
+    
 } motor_t;
 
-// create our two motors with correct pin numbering
-motor_t left = {
-	.PIN_EN = MOTOR_LEFT_EN,
-	.PIN_DIRA = MOTOR_LEFT_DIRA,
-	.PIN_DIRB = MOTOR_LEFT_DIRB,
-	.PIN_ENCA = MOTOR_LEFT_ENCA,
-	.PIN_ENCB = MOTOR_LEFT_ENCB,
-	//.set_point = 2.5,
-};
+motor_t motor_left, motor_right;
 
-motor_t right = {
-	.PIN_EN = MOTOR_RIGHT_EN,
-	.PIN_DIRA = MOTOR_RIGHT_DIRA,
-	.PIN_DIRB = MOTOR_RIGHT_DIRB,
-	.PIN_ENCA = MOTOR_RIGHT_ENCA,
-	.PIN_ENCB = MOTOR_RIGHT_ENCB,
-	//.set_point = 1.5
-};
-
-// the PID-controllers for the motors (has to be created separate from the struct unfortunately since it is referencing the struct itself)
-PID leftPID(&left.speed, &left.control_adjust, &left.set_point, 5.0*8*8/2/10/*0.0065*/, /*0.16*8*8/2*/ 0.0, /*0.125/2*/ 62.5 / 10,P_ON_E, DIRECT);
-PID rightPID(&right.speed, &right.control_adjust, &right.set_point, 5.0*8*8/2/10/*0.0065*/, /*0.16*8*8/2*/ 0.0, /*0.125/2*/ 62.5 / 10,P_ON_E, DIRECT);
-
-//#define SPEED_REGULATION
 
 // sensor variables
 unsigned short step_counter = 0, last_step_counter = 0;
@@ -121,12 +121,11 @@ short next_steps = (short) (STEPS_PER_ROTATION * (2.0f / 360.0f));
 
 
 
-void setup()
-{
+void setup(){
 	Serial.begin(115200);
 	Wire.begin();
 	
-	
+	///////////// STEPPER MOTOR /////////////
 
 	//Serial.print(left.control_output);
 	//Serial.println(left.pid->GetKp());
@@ -137,8 +136,7 @@ void setup()
 	pinMode(STEPPER_STEP, OUTPUT);
 	pinMode(STEPPER_SENSOR, INPUT);
 	
-	
-	// disable motor
+	// disable stepper motor
 	digitalWrite(STEPPER_EN, HIGH);
 	
 	// select rotational direction
@@ -146,6 +144,7 @@ void setup()
 	
 	homeSensor();
 
+	///////////// SENSORS ///////////////
 
 	// disable both sensors first
 	pinMode(FRONT_SENSOR_SHUT, OUTPUT);
@@ -192,59 +191,44 @@ void setup()
 	backSensor.startContinuous();
 
 	// sensors initialized, lets init the motors
-	
-	// initialize the motor structs	completely
-	left.pid = &leftPID;
-	right.pid = &rightPID;
-	
-	left.interruptHandler = motorLeftEncoder;
-	right.interruptHandler = motorRightEncoder;
-	
-	// do the initialization
-	initializeMotor(&left);
-	initializeMotor(&right);
-	
+
+	///////////// DC MOTORs ///////////
+	pinMode(MOTOR_LEFT_EN, OUTPUT);	
+    digitalWrite(MOTOR_LEFT_EN, HIGH);
+    pinMode(MOTOR_LEFT_DIRA, OUTPUT);
+    pinMode(MOTOR_LEFT_DIRB, OUTPUT);
+    pinMode(MOTOR_LEFT_ENCA, INPUT);
+    pinMode(MOTOR_LEFT_ENCB, INPUT);
+
+    pinMode(MOTOR_RIGHT_EN, OUTPUT);
+    digitalWrite(MOTOR_RIGHT_EN, HIGH);
+    pinMode(MOTOR_RIGHT_DIRA, OUTPUT);
+    pinMode(MOTOR_RIGHT_DIRB, OUTPUT);
+    pinMode(MOTOR_RIGHT_ENCA, INPUT);
+    pinMode(MOTOR_RIGHT_ENCB, INPUT);
+
+    attachInterrupt(digitalPinToInterrupt(MOTOR_LEFT_ENCA), int_encoder_left, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(MOTOR_RIGHT_ENCA), int_encoder_right, CHANGE);
+
+
+	// set up motors and their PID-regulators
+    motor_left.pid.Kp = 0.55276367534483;
+    motor_left.pid.Ki = 1.64455966045303;
+    motor_left.pid.Kd = 0.0101674410396297;
+    motor_left.pid.Tf = 1/11.8209539589613;
+    motor_left.pins = {MOTOR_LEFT_EN, MOTOR_LEFT_DIRA, MOTOR_LEFT_DIRB};
+
+    motor_right.pid.Kp = 0.55276367534483;
+    motor_right.pid.Ki = 1.64455966045303;
+    motor_right.pid.Kd = 0.0101674410396297;
+    motor_right.pid.Tf = 1/11.8209539589613;
+    motor_right.pins = {MOTOR_RIGHT_EN, MOTOR_RIGHT_DIRA, MOTOR_RIGHT_DIRB};
+    	
+	motor_right.speed_reference = 0.0f;
+	motor_left.speed_reference = 0.0f;
 	
 	// initialize the time counter
-	lastTimeMillis = millis();	
-}
-
-// initializes a single motor
-void initializeMotor(motor_t* motor){
-	// setup pins
-	pinMode(motor->PIN_EN, OUTPUT);
-	pinMode(motor->PIN_DIRA, OUTPUT);
-	pinMode(motor->PIN_DIRB, OUTPUT);
-	pinMode(motor->PIN_ENCA, INPUT);
-	pinMode(motor->PIN_ENCB, INPUT);
-	
-	// attach correct interrupt
-	attachInterrupt(digitalPinToInterrupt(motor->PIN_ENCA), motor->interruptHandler, CHANGE);
-	
-	
-	// set up PID-controller
-	motor->pid->SetOutputLimits(-255, 255);
-	motor->pid->SetSampleTime(100);
-	motor->pid->SetMode(AUTOMATIC);	
-}
-
-// interrupt routines for the encoders
-void motorLeftEncoder(){
-	handleEncoder(&left);
-}
-
-void motorRightEncoder(){
-	handleEncoder(&right);
-}
-
-inline void handleEncoder(motor_t* motor){
-	if(digitalRead(motor->PIN_ENCA) == digitalRead(motor->PIN_ENCB)){
-		motor->speed_counter++;
-		motor->odometry_counter++;
-	} else {
-		motor->speed_counter--;
-		motor->odometry_counter--;
-	}
+	last_timer_us = micros();	
 }
 
 void homeSensor(){
@@ -281,63 +265,23 @@ void homeSensor(){
 	step_counter = 0;
 }
 
-/*
-void initSensor(VL53L0X sensor, uint8_t addr){
-
-	sensor.init();
-	sensor.setTimeout(500);
-	sensor.setAddress(addr);
-  
-#if defined LONG_RANGE
-	// lower the return signal rate limit (default is 0.25 MCPS)
-	sensor.setSignalRateLimit(0.1);
-	// increase laser pulse periods (defaults are 14 and 10 PCLKs)
-	sensor.setVcselPulsePeriod(VL53L0X::VcselPeriodPreRange, 18);
-	sensor.setVcselPulsePeriod(VL53L0X::VcselPeriodFinalRange, 14);
-#endif
-
-#if defined HIGH_SPEED
-	// reduce timing budget to 20 ms (default is about 33 ms)
-	sensor.setMeasurementTimingBudget(20000);
-#elif defined HIGH_ACCURACY
-	// increase timing budget to 200 ms
-	sensor.setMeasurementTimingBudget(200000);
-#endif
-}
-*/
 
 //unsigned short frontAngle = 0, backAngle = 0;
 void loop() {
+ 	// get current time
+    unsigned long timer_us = micros();
 
-#ifdef SPEED_REGULATION // only calculate speed if it is needed
-	// loop that runns at 10 Hz
-	if((millis() - lastTimeMillis) > SPEED_LOOP_TIMING){
-		lastTimeMillis = millis();
-			
-		calculateMotorSpeed(&left);
-		calculateMotorSpeed(&right);
+    // calculate elapsed time in seconds 
+    h = (double)(timer_us - last_timer_us) / 1000000.0; 
 
-		//Serial.println(analogRead(A0));
-	}
-#endif
+    // store current time for next iteration
+    last_timer_us = timer_us; 
 
-	doMotorLogic(&left);
-	doMotorLogic(&right);
+	// handle motors
+    handle_motor(&motor_left, h);
+    handle_motor(&motor_right, h);
 
-	
-	//Serial.println(left.speed);
-	 
-	 /*
-	// handle serial input
-	if(Serial.available() > 0){
-		left.set_point = (double)Serial.parseFloat();
-		right.set_point = left.set_point / 2;
-		//motorRightSetPoint = motorLeftSetPoint;
-		
-		while(Serial.available() > 0) Serial.read();
-	}
-	*/
-	
+
 	// check if there are any incoming bytes on the serial port
 	if(Serial.available() > 0){
 		// read one byte
@@ -373,7 +317,8 @@ void loop() {
 			buffer[0] = Serial.read();
 			
 			float value = *((float*)&buffer);
-			left.set_point = (double) value;
+			
+			motor_left.speed_reference = (double) value;
 		}else if (input == 0x11){ // "set right motor speed" - command?
 			// wait for 4 bytes
 			while(Serial.available() < 4);
@@ -386,7 +331,7 @@ void loop() {
 			buffer[0] = Serial.read();
 			
 			float value = *((float*)&buffer);
-			right.set_point = (double) value;
+			motor_right.speed_reference = (double) value;
 		}
 		
 	}
@@ -409,11 +354,11 @@ void loop() {
 		// check if we crossed any halfway
 		if(last_step_counter % (STEPS_PER_ROTATION / 2) > (last_step_counter + next_steps) % (STEPS_PER_ROTATION / 2)){
 			// yes, send message (with odometry information) to indicate that
-			sendData(-1, left.odometry_counter, right.odometry_counter);
+			sendData(-1, motor_left.odometry_counter, motor_right.odometry_counter);
 			
 			// reset odometry counters
-			left.odometry_counter = 0;
-			right.odometry_counter = 0;
+			motor_left.odometry_counter = 0;
+			motor_right.odometry_counter = 0;
 			
 			// this allows the code to either do repeated measurements (if doContinously = 1) or only do a measurement once (if doContinously = 0 and doOnce is set to 1 once)
 			doOnce = doContinously;
@@ -446,58 +391,11 @@ void loop() {
 		Serial.println();
 		*/
 	
+	} else {
+		delay(10);
 	}
-	
+
 }
-
-void calculateMotorSpeed(motor_t* motor){
-	// convert encoder pulses to revolutions
-	double revs = (double)motor->speed_counter / (32 * 30);
-	
-	// the speed is calculated every 100 ms (10 Hz)
-	double revs_per_second = revs * (1000.0 / SPEED_LOOP_TIMING);
-	
-	// update the motor speed, but also use a bit of smoothing
-	motor->speed = revs_per_second * 0.95 + motor->speed * 0.05;
-	//motorLeftSpeed = revs_per_second * 0.2 + motorLeftSpeed * 0.8;
-	
-	// reset counter
-	motor->speed_counter = 0;
-}
-
-void doMotorLogic(motor_t* motor){
-
-#ifdef SPEED_REGULATION // only do speed regulation when wanted
-	if(motor->pid->Compute()){
-		
-		// add adjustment to control value
-		motor->control_output += motor->control_adjust;// * 0.1;
-		
-		// cap control value
-		motor->control_output = constrain(motor->control_output, -255, 255);
-		
-		writeMotorControl(motor);
-		
-		/*
-		writeMotorLeft(motorLeftControl);
-		//analogWrite(MOTOR_LEFT_EN, (int)motorLeftControl);
-		Serial.print('L');
-		Serial.print(motorLeftSpeed);
-		Serial.print(':');
-		Serial.print(motorLeftSetPoint);
-		Serial.print(':');
-		Serial.print(motorLeftControlAdjust);
-		Serial.print(':');
-		Serial.println(motorLeftControl);
-		*/
-	}
-#else // otherwise, use the set_point variable as the pwm signal instead of the desired speed
-	motor->control_output = constrain(motor->set_point, -255, 255);
-	writeMotorControl(motor);
-	
-#endif
-}
-
 
 
 
@@ -518,55 +416,72 @@ inline void sendData(short steps, short frontDistance, short backDistance){
 	Serial.write((frontDistance >> 0) & 0xff);
 	Serial.write((backDistance >> 8) & 0xff);
 	Serial.write((backDistance >> 0) & 0xff);
- 	
-/*
-  Serial.print(angle);
-  Serial.print(':');
-  Serial.println(distance);
-  */
+ 
 }
 
-void writeMotorControl(motor_t* motor){
-	if(abs(motor->set_point) < 0.2){
-		digitalWrite(motor->PIN_DIRA, LOW);
-		digitalWrite(motor->PIN_DIRB, LOW);
-		analogWrite(motor->PIN_EN, 255);
-		return;
-	} 
-	
-	if(motor->control_output > 0){
-		digitalWrite(motor->PIN_DIRA, HIGH);
-		digitalWrite(motor->PIN_DIRB, LOW);
-		analogWrite(motor->PIN_EN, (int)round(motor->control_output));
-	}else{
-		digitalWrite(motor->PIN_DIRA, LOW);
-		digitalWrite(motor->PIN_DIRB, HIGH);
-		analogWrite(motor->PIN_EN, -(int)round(motor->control_output));
-	}
-}
-/*
 
-void writeMotorLeft(float control){
-	if(control >= 0){
-		digitalWrite(MOTOR_LEFT_DIRA, HIGH);
-		digitalWrite(MOTOR_LEFT_DIRB, LOW);
-		analogWrite(MOTOR_LEFT_EN, (int)round(control));
-	}else{
-		digitalWrite(MOTOR_LEFT_DIRA, LOW);
-		digitalWrite(MOTOR_LEFT_DIRB, HIGH);
-		analogWrite(MOTOR_LEFT_EN, -(int)round(control));
-	}
+void handle_motor(motor_t* motor, double h){
+    double speed = getMotorRotationSpeed(motor, h);
+
+    // calculate error
+    double e = motor->speed_reference - speed;
+
+    // calculate control signal
+    double u = calculate_pid(&motor->pid, e, h);  
+
+    // constrain control signal to within +-12 volts
+    double saturated_u = constrain(u, -12.0, 12.0);
+    
+    // drive the motor with this signal
+    actuate_motor(motor, saturated_u); 
+
 }
 
-void writeMotorRight(float control){
-	if(control >= 0){
-		digitalWrite(MOTOR_RIGHT_DIRA, HIGH);
-		digitalWrite(MOTOR_RIGHT_DIRB, LOW);
-		analogWrite(MOTOR_RIGHT_EN, (int)round(control));
-	}else{
-		digitalWrite(MOTOR_RIGHT_DIRA, LOW);
-		digitalWrite(MOTOR_RIGHT_DIRB, HIGH);
-		analogWrite(MOTOR_RIGHT_EN, -(int)round(control));
-	}
+// does the PID calculation and returns the new control output
+double calculate_pid(PID_t* pid, double error, double h){
+    // proportional part
+    pid->P = pid->Kp * error;
+
+    // derivative part
+    pid->D = pid->Tf / (pid->Tf + h) * pid->D + pid->Kd / (pid->Tf + h) * (error - pid->e_old);
+
+    // calculate output
+    double u = pid->P + pid->I + pid->D;
+
+    // integral part
+    pid->I += pid->Ki * h * error;
+
+    // save error
+    pid->e_old = error;
+
+    // return control signal
+    return u;
 }
-*/
+
+// motor function, input voltage in range -12 to 12 volts
+void actuate_motor(motor_t* motor, double u){
+    // cap u in the range -12 to 12 volts
+    u = constrain(u, -12.0, 12.0);
+
+
+	// theese small voltages will only make the motors whine anyway
+	if( abs(u) < 0.6)
+		u = 0;
+
+    // convert voltage to pwm duty cycle
+    u = 100.0 * (u / 12.0);
+
+    // convert pwm duty cycle to raw value
+    uint8_t PWM_VALUE = (uint8_t) abs(u * (double) 255 / 100.0 );
+
+    analogWrite(motor->pins.PIN_EN, PWM_VALUE);
+    if(u >= 0){
+        // forward
+        digitalWrite(motor->pins.PIN_DIRA, HIGH);
+        digitalWrite(motor->pins.PIN_DIRB, LOW);
+    }else{
+        // backward
+        digitalWrite(motor->pins.PIN_DIRA, LOW);
+        digitalWrite(motor->pins.PIN_DIRB, HIGH);
+    }
+}

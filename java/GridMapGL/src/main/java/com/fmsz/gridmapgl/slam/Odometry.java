@@ -52,7 +52,7 @@ public class Odometry {
 		
 		//TODO: add noise
 		double d = dCenter + rand.nextGaussian() * 0.02;
-		double theta = dTheta + rand.nextGaussian() * 5 * MathUtil.DEG_TO_RAD;
+		double theta = dTheta + rand.nextGaussian() * 2 * MathUtil.DEG_TO_RAD;
 
 		// apply movement
 		p.x += MathUtil.cos(p.theta) * d;
