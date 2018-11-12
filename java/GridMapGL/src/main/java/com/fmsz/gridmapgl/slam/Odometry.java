@@ -22,8 +22,13 @@ import com.fmsz.gridmapgl.math.MathUtil;
 /** Class for storing the odometry measurement associated with this observation */
 public class Odometry {
 
-	double dCenter, dTheta;
-	Random rand = new Random();
+	public double dCenter, dTheta;
+	private Random rand = new Random();
+	
+	public Odometry (double dCenter, double dTheta) {
+		this.dCenter = dCenter;
+		this.dTheta = dTheta;
+	}
 
 	public Odometry(int leftCount, int rightCount) {
 		// http://faculty.salina.k-state.edu/tim/robotics_sg/Control/kinematics/odometry.html

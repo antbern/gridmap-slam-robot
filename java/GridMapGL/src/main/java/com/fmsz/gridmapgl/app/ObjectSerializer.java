@@ -33,13 +33,15 @@ public class ObjectSerializer {
 	};
 
 	///////////////////////////////// ODOMETRY ///////////////////////////////////////////////
-	public static void writeOdometry(DataOutputStream dos, Odometry o) {
-		// TODO
+	public static void writeOdometry(DataOutputStream dos, Odometry o) throws IOException {
+		// write values
+		dos.writeDouble(o.dCenter);
+		dos.writeDouble(o.dTheta);		
 	}
 
-	public static Odometry readOdometry(DataInputStream dis) {
-		// TODO
-		return null;
+	public static Odometry readOdometry(DataInputStream dis) throws IOException {
+		// read and return
+		return new Odometry(dis.readDouble(), dis.readDouble());
 	}
 
 	/////////////////////////////////// OBSERVATION ////////////////////////////////////////////

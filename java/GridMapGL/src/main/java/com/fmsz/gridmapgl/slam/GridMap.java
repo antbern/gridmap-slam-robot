@@ -224,8 +224,8 @@ public class GridMap {
 
 		for (Measurement m : obs.getMeasurements()) {
 			// only care about measurements that hit something
-			if (!m.wasHit)
-				continue;
+			//if (!m.wasHit)
+			//	continue;
 
 			// look up the probability of the end point being occupied and multiply by the product of the others
 			int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
@@ -240,7 +240,7 @@ public class GridMap {
 				}
 				*/
 				
-				//if(m.wasHit) val = 1-val;
+				if(!m.wasHit) val = 1-val;
 
 				// multiply all probabilities together
 
