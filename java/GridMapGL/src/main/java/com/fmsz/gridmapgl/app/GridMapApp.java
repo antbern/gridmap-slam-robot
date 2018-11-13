@@ -249,6 +249,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 				if (imgui.button("Resample", new Vec2())) {
 					slam.resample();
+					neff = slam.calculateNeff();
 				}
 
 				imgui.checkbox("Automatic Resampling", automaticResampling);

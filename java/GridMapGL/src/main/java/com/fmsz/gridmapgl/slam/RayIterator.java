@@ -59,8 +59,10 @@ public class RayIterator implements Iterator<Vec2i> {
 	 *            the x-coordinate of the end point
 	 * @param y1
 	 *            the y-coordinate of the end point
+	 * @param additionalSteps
+	 * 			  an extra number of steps to perform after the end point has been reached
 	 */
-	public void init(float x0, float y0, float x1, float y1) {
+	public void init(float x0, float y0, float x1, float y1, int additionalSteps) {
 
 		// set up stuff
 		dx = Math.abs(x1 - x0);
@@ -70,7 +72,7 @@ public class RayIterator implements Iterator<Vec2i> {
 		y = (int) Math.floor(y0);
 
 		// start with at least one
-		n = 1;
+		n = 1 + additionalSteps;
 
 		// decide based on case
 		if (dx == 0) {

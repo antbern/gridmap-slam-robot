@@ -82,8 +82,6 @@ public class GridMap {
 		// create the correct ray iterator
 		rayIterator = new RayIterator(gridSize.x, gridSize.y);
 
-		// initialize with starting probability
-		// reset();
 	}
 
 	/**
@@ -171,18 +169,35 @@ public class GridMap {
 		float endY = (m.getEndPointY(p) - position.y) / resolution;
 
 		// calculate the measured distance (in grid coordinates)
-		float measuredDistance = (float) m.distance / resolution; // Math.sqrt((startX - endX) * (startX - endX) + (startY - endY) * (startY
-																	// - endY));
+		float measuredDistance = (float) m.distance / resolution;
 
-		rayIterator.init(startX, startY, endX, endY);
+		// stores the deltas in x and y direction
+		float dX, dY, distance;//, distanceSq;
+
+		// float hitTolerance = 2;
+		// float measuredDistanceSq = measuredDistance * measuredDistance;
+		// float maxDistSq = (measuredDistance + hitTolerance / 2) * (measuredDistance + hitTolerance / 2);
+		// float minDistSq = (measuredDistance - hitTolerance / 2) * (measuredDistance - hitTolerance / 2);
+
+		// initialize the RayIterator, the 2 is to give the sensor model the possibility to act correctly for cells "behind" the end point
+		// and should be >= the parameter to inverseSensorModel below. Higher values gives "thicker" walls
+		rayIterator.init(startX, startY, endX, endY, 2);
 		while (rayIterator.hasNext()) {
 			Vec2i cell = rayIterator.next();
 
 			// calculate the distance to the center of the visited cell
-			float distance = (float) Math
-					.sqrt((startX - cell.x - 0.5f) * (startX - cell.x - 0.5f) + (startY - cell.y - 0.5f) * (startY - cell.y - 0.5f));
-			map.logData[cell.x + cell.y * gridSize.x] += Util.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, m.wasHit,
-					1 /* because we are in grid coordinates, and we want one cell to be occupied */));
+			dX = startX - (cell.x + 0.5f);
+			dY = startY - (cell.y + 0.5f);
+			distance = (float) Math.sqrt(dX * dX + dY * dY);
+			// distanceSq = dX * dX + dY * dY;
+
+			// integrate the measurement to each visited cell, according to the inverse sensor model
+			// the 2 is used as a "threshold", defining an interval where the cell should be considered occupied based on the measurement
+			map.logData[cell.x + cell.y * gridSize.x] += Util
+					.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, m.wasHit, 2));
+			
+			// map.logData[cell.x + cell.y * gridSize.x] += Util
+			// .logOdds(SensorModel.inverseSensorModelSq(distanceSq, measuredDistanceSq, m.wasHit, maxDistSq, minDistSq));
 		}
 	}
 
@@ -224,8 +239,8 @@ public class GridMap {
 
 		for (Measurement m : obs.getMeasurements()) {
 			// only care about measurements that hit something
-			//if (!m.wasHit)
-			//	continue;
+			// if (!m.wasHit)
+			// continue;
 
 			// look up the probability of the end point being occupied and multiply by the product of the others
 			int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
@@ -239,8 +254,9 @@ public class GridMap {
 					rays.add(new Vec2i(gridX, gridY));
 				}
 				*/
-				
-				if(!m.wasHit) val = 1-val;
+
+				if (!m.wasHit)
+					val = 1 - val;
 
 				// multiply all probabilities together
 
@@ -256,13 +272,13 @@ public class GridMap {
 		return product;
 	}
 	/*
-
+	
 	public double probabilityOf(GridMapData map, Measurement m, Pose p) {
-
+	
 		// look up the probability of the end point being occupied and multiply by the product of the others
 		int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
 		int gridY = (int) ((m.getEndPointY(p) - position.y) / resolution);
-
+	
 		if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.x || gridY >= gridSize.y)) {
 			double val = map.likelihoodData[gridX + gridY * gridSize.x];
 			/*
@@ -271,7 +287,7 @@ public class GridMap {
 				rays.add(new Vec2i(gridX, gridY));
 			}
 			*
-
+	
 			return zHit * val + zRandom * 1.0 / SensorModel.SENSOR_MAX_RANGE;
 		}
 		return 0;

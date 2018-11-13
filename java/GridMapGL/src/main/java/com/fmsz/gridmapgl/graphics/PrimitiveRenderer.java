@@ -56,7 +56,6 @@ public class PrimitiveRenderer {
 		shader = new Shader("res/shaders/basic.shader");
 		shader.bind();
 
-		System.out.println(layout.getStride());
 
 		// create a vertex buffer to hold our data (size in bytes)
 		vb = new VertexBuffer(maxVertices * layout.getStride());

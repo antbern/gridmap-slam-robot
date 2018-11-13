@@ -39,4 +39,20 @@ public class SensorModel {
 
 		return P_OCCUPPIED;
 	}
+	
+	/**
+	 * An implementation of the above method, but using squared distances instead to increase performance (avoid a sqrt for each visited cell)
+	 * You need to provide your own maxDistSq = (measuredDistance + hitTolerance/2)^2 and  minDistSq = (measuredDistance - hitTolerance/2)^2
+	 */
+	public static double inverseSensorModelSq(float currentDistanceSq, float measuredDistanceSq, boolean wasHit, float maxDistSq, float minDistSq) {
+		if (!wasHit)
+			return (currentDistanceSq < measuredDistanceSq ? P_FREE : P_PRIOR);
+
+		if (currentDistanceSq < minDistSq)
+			return P_FREE;
+		if (currentDistanceSq > maxDistSq)
+			return P_PRIOR;
+
+		return P_OCCUPPIED;
+	}
 }

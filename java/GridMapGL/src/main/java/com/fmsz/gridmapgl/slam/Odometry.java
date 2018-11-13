@@ -43,7 +43,7 @@ public class Odometry {
 		// the angle moved
 		dTheta = (dRight - dLeft) / Robot.WHEEL_DISTANCE;
 
-		System.out.println(String.format("%.2f, %.2f", dCenter, dTheta * MathUtil.RAD_TO_DEG));
+		//System.out.println(String.format("%.2f, %.2f", dCenter, dTheta * MathUtil.RAD_TO_DEG));
 	}
 
 	/**
@@ -55,10 +55,15 @@ public class Odometry {
 	public void apply(Pose p) {
 		// do this very simple for now
 		
-		//TODO: add noise
-		double d = dCenter + rand.nextGaussian() * 0.02;
-		double theta = dTheta + rand.nextGaussian() * 2 * MathUtil.DEG_TO_RAD;
+		double d = dCenter + rand.nextGaussian() * (0.02 + dCenter * 0.1);
+		double theta = dTheta + rand.nextGaussian() * (15 + 0.1 * dTheta * MathUtil.RAD_TO_DEG) * MathUtil.DEG_TO_RAD;
 
+		// do not add noise when we have not moved!
+		if(dCenter == 0) {
+			d = 0;
+			theta = 0;
+		}
+			
 		// apply movement
 		p.x += MathUtil.cos(p.theta) * d;
 		p.y += MathUtil.sin(p.theta) * d;
