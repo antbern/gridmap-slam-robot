@@ -17,8 +17,8 @@ package com.fmsz.gridmapgl.slam;
 
 public class SensorModel {
 	/** Defines the max sensing range for the sensor and what it returns if it didn't find anything */
-	public static final float SENSOR_MAX_RANGE = /*1.3f;//*/2.0f;
-	public static final float SENSOR_NO_RESPONSE_THRESHHOLD = 8.0f;
+	public static final float SENSOR_MAX_RANGE = 4.0f;
+	//public static final float SENSOR_NO_RESPONSE_THRESHHOLD = 8.0f;
 
 	public static final double P_FREE = 0.3f;
 	public static final double P_OCCUPPIED = 0.7f;

@@ -68,7 +68,7 @@ public class SerialConnectionThread extends Thread {
 							rad += Robot.SENSOR_ANGLE_OFFSET;
 
 							float dist = frontDistance / 1000f;
-							if (dist > SensorModel.SENSOR_NO_RESPONSE_THRESHHOLD)
+							if (dist < 0)
 								currentObservation.addMeasurement(rad, SensorModel.SENSOR_MAX_RANGE, false);
 							else
 								currentObservation.addMeasurement(rad, dist, true);
@@ -76,7 +76,7 @@ public class SerialConnectionThread extends Thread {
 							// add a measurement for the back sensor (+180 deg)
 							rad += MathUtil.PI;
 							dist = backDistance / 1000f;
-							if (dist > SensorModel.SENSOR_NO_RESPONSE_THRESHHOLD)
+							if (dist < 0)
 								currentObservation.addMeasurement(rad, SensorModel.SENSOR_MAX_RANGE, false);
 							else
 								currentObservation.addMeasurement(rad, dist, true);

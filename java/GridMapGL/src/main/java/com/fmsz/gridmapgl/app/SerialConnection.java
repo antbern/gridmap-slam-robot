@@ -240,6 +240,8 @@ public class SerialConnection implements SerialPortPacketListener {
 		// try to open the port
 		if (!port.openPort()) {
 			// there was an error!
+			System.err.println("[SerialConnection] There was an error opening the port " + port.getSystemPortName() + " (" + port.getDescriptivePortName() + ")");
+			return;
 		}
 		// System.out.println(port.clearDTR());
 

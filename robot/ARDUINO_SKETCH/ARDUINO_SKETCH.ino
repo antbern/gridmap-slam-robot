@@ -8,13 +8,13 @@
  The range readings are in units of mm. */
 
 #include <Wire.h>
-#include <VL53L0X.h>
+#include <VL53L1X.h>
 #include <Servo.h>
 #include "PID_v1.h"
 #include <math.h>
 
-VL53L0X frontSensor;
-VL53L0X backSensor;
+VL53L1X frontSensor;
+VL53L1X backSensor;
 
 #define FRONT_SENSOR_SHUT A3
 #define BACK_SENSOR_SHUT A2
@@ -146,25 +146,25 @@ void setup(){
 
 	///////////// SENSORS ///////////////
 
-	// disable both sensors first
-	pinMode(FRONT_SENSOR_SHUT, OUTPUT);
-	pinMode(BACK_SENSOR_SHUT, OUTPUT);
-
+	// disable both sensors first, theese are not level shifted, so only pull low when activated
 	digitalWrite(FRONT_SENSOR_SHUT, LOW);
 	digitalWrite(BACK_SENSOR_SHUT, LOW);
 
+	pinMode(FRONT_SENSOR_SHUT, OUTPUT);
+	pinMode(BACK_SENSOR_SHUT, OUTPUT);	
+
 	// initialize front sensor
-	digitalWrite(FRONT_SENSOR_SHUT, HIGH); // enable
+	pinMode(FRONT_SENSOR_SHUT, INPUT); // enable (high Z state)
 	frontSensor.init();
 	frontSensor.setTimeout(500);
 	frontSensor.setAddress(0x29 + 0x02);
   
-	digitalWrite(BACK_SENSOR_SHUT, HIGH); // enable
+	pinMode(BACK_SENSOR_SHUT, INPUT); // enable (high Z state)
 	backSensor.init();
 	backSensor.setTimeout(500);
 	backSensor.setAddress(0x29 + 0x04);
 
-	
+	/*
 #if defined LONG_RANGE
 	// lower the return signal rate limit (default is 0.25 MCPS)
 	frontSensor.setSignalRateLimit(0.1);
@@ -186,9 +186,18 @@ void setup(){
 	frontSensor.setMeasurementTimingBudget(200000);
 	backSensor.setMeasurementTimingBudget(200000);
 #endif
+	*/
 
-	frontSensor.startContinuous();
-	backSensor.startContinuous();
+	frontSensor.setDistanceMode(VL53L1X::Long);
+	backSensor.setDistanceMode(VL53L1X::Long);
+
+	frontSensor.setMeasurementTimingBudget(20000);
+	backSensor.setMeasurementTimingBudget(20000);
+
+	// initialize with back-to-back mode
+	frontSensor.startContinuous(20);
+	backSensor.startContinuous(20);
+
 
 	// sensors initialized, lets init the motors
 
@@ -368,9 +377,23 @@ void loop() {
 				digitalWrite(STEPPER_EN, HIGH);
 		}
 		
+
+		// take readings
+		short frontRange = frontSensor.read();
+		short backRange = backSensor.read();
+
+		// check if max-range was recieved
+		if(frontSensor.ranging_data.range_status == VL53L1X::RangeStatus::SignalFail || frontSensor.ranging_data.range_status == VL53L1X::RangeStatus::OutOfBoundsFail){
+			frontRange = -1;
+		}
+
+		if(backSensor.ranging_data.range_status == VL53L1X::RangeStatus::SignalFail || backSensor.ranging_data.range_status == VL53L1X::RangeStatus::OutOfBoundsFail){
+			backRange = -1;
+		}
+
 		// take and send the actual measurements
-		sendData(step_counter, frontSensor.readRangeContinuousMillimeters(), backSensor.readRangeContinuousMillimeters());
-		
+		sendData(step_counter, frontRange, backRange);
+
 		/*
 		short lastFrontAngle = frontAngle % 180;
 		
