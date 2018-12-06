@@ -16,7 +16,6 @@
 package com.fmsz.gridmapgl.slam;
 
 import java.util.ArrayList;
-import java.util.Random;
 
 import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.GridMap.GridMapData;
@@ -48,11 +47,11 @@ public class SLAM {
 	}
 
 	private ArrayList<Particle> particles;
-	private int numParticles = 500;
+	private int numParticles = 200;
 
 	private Particle strongestParticle = null;
 
-	private Random rand = new Random();
+	//private Random rand = new Random();
 
 	public SLAM() {
 		gridMap = new GridMap(6.0f, 6.0f, 0.05f, new Vec2(-3.0f, -3.0f));

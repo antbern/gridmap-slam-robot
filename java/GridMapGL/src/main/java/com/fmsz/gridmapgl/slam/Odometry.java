@@ -21,13 +21,16 @@ import com.fmsz.gridmapgl.math.MathUtil;
 
 /** Class for storing the odometry measurement associated with this observation */
 public class Odometry {
+	// used to add noise when applying to Pose
+	private static Random rand = new Random();
 
 	public double dCenter, dTheta;
-	private Random rand = new Random();
-	
-	public Odometry (double dCenter, double dTheta) {
+	private double dCenterSD, dThetaSD;
+
+	public Odometry(double dCenter, double dTheta) {
 		this.dCenter = dCenter;
 		this.dTheta = dTheta;
+		recalculateStdDev();
 	}
 
 	public Odometry(int leftCount, int rightCount) {
@@ -43,7 +46,24 @@ public class Odometry {
 		// the angle moved
 		dTheta = (dRight - dLeft) / Robot.WHEEL_DISTANCE;
 
-		//System.out.println(String.format("%.2f, %.2f", dCenter, dTheta * MathUtil.RAD_TO_DEG));
+		recalculateStdDev();
+
+		// System.out.println(String.format("%.2f, %.2f", dCenter, dTheta * MathUtil.RAD_TO_DEG));
+	}
+
+	/**
+	 * Calculates the standard deviation used when applying random Gaussian noise to a Pose
+	 */
+	public void recalculateStdDev() {
+		// calculate desired standard deviations, +/- 2SD contains 95.4%
+		// basic principle: default base case + % of changed amount		
+		dCenterSD = (0.01 + Math.abs(dCenter) * 0.1) / 2;
+		dThetaSD = 5 * MathUtil.DEG_TO_RAD + 0.1 * Math.abs(dTheta);
+
+		System.out.println("C: " + dCenter + " -> sd=" + dCenterSD);
+		System.out.println("T: " + dTheta + " -> sd=" + dThetaSD * MathUtil.RAD_TO_DEG);
+		System.out.println();
+		
 	}
 
 	/**
@@ -53,20 +73,23 @@ public class Odometry {
 	 *            the Pose to change
 	 */
 	public void apply(Pose p) {
-		// do this very simple for now
-		
-		double d = dCenter + rand.nextGaussian() * (0.02 + dCenter * 0.1);
-		double theta = dTheta + rand.nextGaussian() * (15 + 0.1 * dTheta * MathUtil.RAD_TO_DEG) * MathUtil.DEG_TO_RAD;
+
+		// take a sample from this very simple motion model
+		double d = dCenter + rand.nextGaussian() * dCenterSD;
+		double theta = dTheta + rand.nextGaussian() * dThetaSD;
 
 		// do not add noise when we have not moved!
-		if(dCenter == 0) {
+		
+		if (dCenter == 0) {
 			d = 0;
 			theta = 0;
 		}
-			
-		// apply movement
+		
+
+		// apply movement, angle first since this controls the direction of the traveled distance
+		p.theta = (float) MathUtil.angleConstrain(p.theta + theta);
 		p.x += MathUtil.cos(p.theta) * d;
 		p.y += MathUtil.sin(p.theta) * d;
-		p.theta = (float) MathUtil.angleConstrain(p.theta + theta);
+
 	}
 }
