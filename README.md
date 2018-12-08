@@ -1,6 +1,6 @@
 # Gridmap SLAM Robot
 
-This is the source code and (eventually) documentation for my differential drive robot. I've written a backend in Java using OpenGL to visualize the LIDAR readings and control the robot. The lidar is home made using a pair of VL53L0X laser ToF distance sensors mounted back to back. The robot is currently equipped with an Arduino Uno controlling the LIDAR stepper motor and the two DC motors for driving, as well as counting the motor encoder pulses and sending them back to the software running on the computer. The encoded count is then used as odometry control input to the SLAM algorithm.
+This is the source code and (eventually) documentation for my differential drive robot. I've written a backend in Java using OpenGL to visualize the LIDAR readings and control the robot. The lidar is home made using a pair of [VL53L1X](https://www.pololu.com/product/3415) laser ToF distance sensors mounted back to back. The robot is currently equipped with an Arduino Uno controlling the LIDAR stepper motor and the two DC motors for driving, as well as counting the motor encoder pulses and sending them back to the software running on the computer. The encoded count is then used as odometry control input to the SLAM algorithm.
 
 In the future i intend to possibly move away from my own implementation of the SLAM algorithm to an existing one and maybe even to ROS.
 
