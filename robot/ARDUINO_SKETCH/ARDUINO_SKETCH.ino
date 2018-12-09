@@ -26,7 +26,7 @@ VL53L1X backSensor;
 #define STEPPER_SENSOR A0
 
 #define MICROSTEPPING 2
-#define STEPS_PER_ROTATION (96*5*MICROSTEPPING)
+#define STEPS_PER_ROTATION (360*MICROSTEPPING)
 
 // motor defines
 #define MOTOR_RIGHT_EN 6
@@ -260,12 +260,9 @@ void homeSensor(){
 		
 		// get a new reading 
 		newVal = analogRead(STEPPER_SENSOR);
-		
+
 		// continue while we see no "peak" in the sensor value
-	}while(newVal - smoothed < 50);
-			
-	// do fine tuuning movements
-	step_motor(4 * MICROSTEPPING);
+	}while(newVal - smoothed < 25);
 	
 	// disable stepper
 	digitalWrite(STEPPER_EN, HIGH);
@@ -393,26 +390,6 @@ void loop() {
 
 		// take and send the actual measurements
 		sendData(step_counter, frontRange, backRange);
-
-		/*
-		short lastFrontAngle = frontAngle % 180;
-		
-		frontAngle = (short) (step_counter * 360L / STEPS_PER_ROTATION);
-		backAngle = (frontAngle + 180) % 360;
-		
-		// did we cross the 360 boudary?
-		if(lastFrontAngle > (frontAngle % 180))
-			sendData(500, 0);
-		
-		*/
-		/*
-		Serial.print(next_steps);
-		Serial.print(':');
-		Serial.print(step_counter);
-		Serial.print(':');
-		Serial.println(frontAngle);
-		Serial.println();
-		*/
 	
 	} else {
 		delay(10);

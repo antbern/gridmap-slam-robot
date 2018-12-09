@@ -1,6 +1,5 @@
 package com.fmsz.gridmapgl.slam;
 
-import com.fmsz.gridmapgl.math.MathUtil;
 
 /** Stores robot configuration parameters */
 public class Robot {
@@ -14,10 +13,10 @@ public class Robot {
 	public static final int MOTOR_STEPS_PER_REVOLUTION = 32 * 30;
 
 	/** Number of stepper motor steps per sensor revolution */
-	public static final int SENSOR_STEPS_PER_REVOLUTION = 96 * 5 * 2;
+	public static final int SENSOR_STEPS_PER_REVOLUTION = 360 * 2;
 
 	/** The initial angle of the front sensor with respect to the forward direction of the robot */
-	public static final float SENSOR_ANGLE_OFFSET = -MathUtil.PI / 2; // -90 deg
+	public static final float SENSOR_ANGLE_OFFSET = 0;
 
 	private Robot() {
 
