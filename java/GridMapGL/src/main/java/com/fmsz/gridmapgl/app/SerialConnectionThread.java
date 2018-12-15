@@ -73,6 +73,7 @@ public class SerialConnectionThread extends Thread {
 							else
 								currentObservation.addMeasurement(rad, dist, true);
 
+							/*
 							// add a measurement for the back sensor (+180 deg)
 							rad += MathUtil.PI;
 							dist = backDistance / 1000f;
@@ -80,7 +81,7 @@ public class SerialConnectionThread extends Thread {
 								currentObservation.addMeasurement(rad, SensorModel.SENSOR_MAX_RANGE, false);
 							else
 								currentObservation.addMeasurement(rad, dist, true);
-
+							*/
 						}
 
 					}
