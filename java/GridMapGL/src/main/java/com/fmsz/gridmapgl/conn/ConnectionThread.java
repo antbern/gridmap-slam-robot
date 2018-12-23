@@ -13,12 +13,13 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  *******************************************************************************/
-package com.fmsz.gridmapgl.app;
+package com.fmsz.gridmapgl.conn;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import com.fmsz.gridmapgl.app.DataEventHandler;
 import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Odometry;

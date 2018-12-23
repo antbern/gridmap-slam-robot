@@ -13,7 +13,7 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  *******************************************************************************/
-package com.fmsz.gridmapgl.app;
+package com.fmsz.gridmapgl.conn;
 
 import java.io.IOException;
 import java.util.ArrayList;

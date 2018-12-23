@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fmsz.gridmapgl.app.DataEventHandler.IDataSubscriber;
+import com.fmsz.gridmapgl.conn.ConnectionManager;
 import com.fmsz.gridmapgl.graphics.Camera;
 import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
