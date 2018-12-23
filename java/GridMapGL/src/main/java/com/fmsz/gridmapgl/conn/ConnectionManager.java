@@ -19,8 +19,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.fazecast.jSerialComm.SerialPort;
-
 import glm_.vec2.Vec2;
 import glm_.vec4.Vec4;
 import imgui.Col;
@@ -29,8 +27,8 @@ import imgui.ImGui;
 import imgui.internal.Dir;
 
 /**
- * This class handles the connection (only serial for now) to the robot.
- * Has its own GUI for establishing the serial connection to the correct port and with the correct speed settings
+ * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial
+ * connection to the correct port and with the correct speed settings
  * 
  * @author Anton
  *
@@ -42,21 +40,16 @@ public class ConnectionManager {
 	private static final byte COMMAND_HOME_SENSOR = 0x05;
 	private static final byte COMMAND_SET_RES = 0x08;
 
-	private int[] currentSelectedPortName = new int[] { 0 };
-	private List<String> portNames = new ArrayList<>();
-
-	private int[] currentSelectedBaudRate = new int[] { 7 };
-	private int[] baudRates = new int[] { 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200 };
-	private List<String> baudRateNames = new ArrayList<>();
-
-	private SerialPort[] availablePorts = null;
-	private SerialPort currentPort = null;
-
 	private ConnectionThread thread = null;
 
 	private int[] sensorDegreeResolutions = { 2, 3, 4, 5, 8, 10, 15, 20, 30, 45 };
 	private List<String> sensorDegreeResolutionNames = new ArrayList<>();
 	private int[] currentSelectedSensorDegreeResolution = { 2 };
+
+	// for selecting the type of connection to make
+	private int[] selectedConn = { 0 };
+	private List<String> selectedConnNames = new ArrayList<>();
+	private IConnection[] conn;
 
 	// Controls
 	private final float[] selectedSpeed = { 10.0f };
@@ -64,40 +57,44 @@ public class ConnectionManager {
 	private Dir lastDirection = Dir.None;
 
 	public ConnectionManager() {
-
-		// create baud rate stuff
-		for (int baudRate : baudRates)
-			baudRateNames.add(String.valueOf(baudRate));
-
-		// create baud rate stuff
+		// create sensor rate stuff
 		for (int sensorDegreeResolution : sensorDegreeResolutions)
 			sensorDegreeResolutionNames.add(String.valueOf(sensorDegreeResolution));
 
-		refreshList();
+		// create connections
+		conn = new IConnection[] { new SerialConnection(), new NetworkConnection() };
+
+		// add their names and initialize
+		for (int i = 0; i < conn.length; i++) {
+			selectedConnNames.add(conn[i].getName());
+			conn[i].init();
+		}
+
 	}
 
 	public void doGUI(ImGui imgui) {
-		if (imgui.begin("Serial", null, 0)) {
+		if (imgui.begin("Connection", null, 0)) {
 
-			// drop-down menu for selecting a port
-			imgui.combo("Port", currentSelectedPortName, portNames, 5);
-			imgui.combo("Baud", currentSelectedBaudRate, baudRateNames, 7);
-			if (currentPort == null) {
-				if (imgui.button("Connect", new Vec2())) {
-					if (currentSelectedPortName[0] != -1)
-						connect(availablePorts[currentSelectedPortName[0]], baudRates[currentSelectedBaudRate[0]]);
-				}
+			// let user select connection to use
+			imgui.combo("Connection", selectedConn, selectedConnNames, 5);
+
+			int selected = selectedConn[0];
+
+			conn[selected].doGUI(imgui);
+			if (conn[selected].isConnected()) {
+				if (imgui.button("Disconnect", new Vec2()))
+					disconnect(conn[selected]);
 			} else {
-				if (imgui.button("Disconnect", new Vec2())) {
-					disconnect();
-				}
+				if (imgui.button("Connect", new Vec2()))
+					connect(conn[selected]);
 			}
-			imgui.sameLine(0);
-			if (imgui.button("Refresh", new Vec2())) {
-				refreshList();
-			}
+		}
 
-			imgui.text("Sensor controls:");
+		imgui.end();
+
+		// controls window
+		if (imgui.begin("Controls", null, 0)) {
+
 			if (imgui.button("Single", new Vec2())) {
 				sendCommand(COMMAND_ONCE);
 			}
@@ -110,12 +107,8 @@ public class ConnectionManager {
 				sendCommand(COMMAND_DISABLE);
 			}
 			imgui.sameLine(0);
-			if (imgui.button("Reset", new Vec2())) {
-				if (currentPort != null) {
-					currentPort.clearDTR();
-					currentPort.setDTR();
-					currentPort.clearDTR();
-				}
+			if (imgui.button("Home", new Vec2())) {
+				sendCommand(COMMAND_HOME_SENSOR);
 			}
 
 			if (imgui.combo("Res", currentSelectedSensorDegreeResolution, sensorDegreeResolutionNames, 7)) {
@@ -123,28 +116,15 @@ public class ConnectionManager {
 				sendCommand(new byte[] { 0x08, (byte) selectedResolution });
 			}
 
-			if (imgui.button("Home", new Vec2())) {
-				sendCommand(COMMAND_HOME_SENSOR);
-			}
+			imgui.separator();
 
-			// imgui.beginColumns("ID", 3, ColumnsFlags.NoResize.getI() | ColumnsFlags.GrowParentContentsSize.getI());
-
-		}
-
-		imgui.end();
-
-		// controls window
-
-		if (imgui.begin("Controls", null, 0)) {
 			boolean controlsActive = imgui.isWindowFocused(FocusedFlags.ChildWindows);
 
-			Dir selectedDirection = Dir.None;
-
 			imgui.text("Status: %s", controlsActive ? "active" : "inactive");
-
 			if (controlsActive)
 				imgui.pushStyleColor(Col.Button, new Vec4(0.5, 0.5, 0.5, 1));
 
+			Dir selectedDirection = Dir.None;
 			// Up arrow
 			imgui.newLine();
 			imgui.sameLine(45);
@@ -223,71 +203,29 @@ public class ConnectionManager {
 
 	}
 
-	private void connect(SerialPort port, int baudRate) {
-		if (currentPort != null)
-			return;
+	private void connect(IConnection conn) {
+		// let the connection do the connecting
+		conn.connect();
+		// if it was successful in connecting, start the thread reading from the streams
 
-		// deactivate RTS line to avoid reset on the Arduino (does not currently work)
-		port.setBaudRate(baudRate);
+		if (conn.isConnected()) {
+			thread = new ConnectionThread(conn.getInputStream());
+			thread.start();
 
-		port.clearRTS();
-
-		// System.out.println(port.setDTR());
-		// try to open the port
-		if (!port.openPort()) {
-			// there was an error!
-			System.err.println("[SerialConnection] There was an error opening the port " + port.getSystemPortName() + " (" + port.getDescriptivePortName() + ")");
-			return;
+			// send the initial configuration parameters
+			sendCommand(new byte[] { COMMAND_SET_RES, (byte) sensorDegreeResolutions[currentSelectedSensorDegreeResolution[0]] });
+		} else {
+			System.err.println("[ConnectionManager] Did not succeed in opening the connection!");
 		}
-		// System.out.println(port.clearDTR());
-
-		// start reading thread
-		thread = new ConnectionThread(port.getInputStream());
-		thread.start();
-
-		// send sync packet
-
-		// this is now our active port
-		currentPort = port;
-
-		// wait for robot to become ready...
-		try {
-			Thread.sleep(2500);
-		} catch (InterruptedException ie) {
-			ie.printStackTrace();
-		}
-
-		// send some initial configuration parameters
-		sendCommand(new byte[] { COMMAND_SET_RES, (byte) sensorDegreeResolutions[currentSelectedSensorDegreeResolution[0]] });
 
 	}
 
-	/** Writes the given bytes to the sensor board */
-	private void sendCommand(byte... command) {
-		if (currentPort != null) {
-			try {
-				currentPort.getOutputStream().write(command, 0, command.length);
-				currentPort.getOutputStream().flush();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private void sendSpeedCommand(boolean leftMotor, float speed) {
-		int bits = Float.floatToIntBits(speed);
-		sendCommand((byte) (leftMotor ? 0x10 : 0x11), (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff),
-				(byte) ((bits >> 8) & 0xff), (byte) (bits & 0xff));
-	}
-
-	private void disconnect() {
-
-		if (currentPort != null) {
+	private void disconnect(IConnection conn) {
+		// check if the connection is open
+		if (conn.isConnected()) {
 
 			// send disable command first
 			sendCommand(COMMAND_DISABLE);
-
-			// currentPort.removeDataListener();
 
 			// stop the reading thread
 			thread.interrupt();
@@ -298,32 +236,30 @@ public class ConnectionManager {
 			}
 			thread = null;
 
-			// try to close port
-			if (!currentPort.closePort())
-				throw new IllegalStateException("SerialPort: Could not close port " + currentPort.getSystemPortName());
-
-			currentPort = null;
+			// let it disconnect
+			conn.disconnect();
 		}
 	}
 
-	public void refreshList() {
-
-		// fetch available ports
-		availablePorts = SerialPort.getCommPorts();
-
-		// clear current names
-		portNames.clear();
-
-		// add each available ports name to the selectable list
-		for (SerialPort port : availablePorts) {
-			portNames.add(port.getSystemPortName() + "(" + port.getPortDescription() + ")");
+	/** Writes the given bytes to the sensor board */
+	private void sendCommand(byte... command) {
+		IConnection c = conn[selectedConn[0]];
+		if (c.isConnected()) {
+			try {
+				c.getOutputStream().write(command, 0, command.length);
+				c.getOutputStream().flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
+	}
 
-		// set the preselected one to the last one
-		currentSelectedPortName[0] = availablePorts.length - 1;
+	private void sendSpeedCommand(boolean leftMotor, float speed) {
+		int bits = Float.floatToIntBits(speed);
+		sendCommand((byte) (leftMotor ? 0x10 : 0x11), (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff), (byte) (bits & 0xff));
 	}
 
 	public void dispose() {
-		disconnect();
+		disconnect(conn[selectedConn[0]]);
 	}
 }
