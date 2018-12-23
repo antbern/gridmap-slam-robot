@@ -84,7 +84,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	// private GridMap gridMap;
 	// private GridMapData mapData;
 
-	private SerialConnection serial;
+	private ConnectionManager serial;
 
 	private SLAM slam;
 	private double neff;
@@ -112,7 +112,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 		// gridMap = new GridMap(6.0f, 6.0f, 0.05f, new Vec2(-3, -3));
 		// mapData = gridMap.createMapData(null);
 
-		serial = new SerialConnection();
+		serial = new ConnectionManager();
 
 		slam = new SLAM();
 		strongestParticle = slam.getStrongestParticle();
