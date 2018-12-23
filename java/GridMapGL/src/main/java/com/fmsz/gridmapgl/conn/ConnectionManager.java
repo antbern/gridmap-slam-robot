@@ -47,7 +47,7 @@ public class ConnectionManager {
 	private int[] currentSelectedSensorDegreeResolution = { 2 };
 
 	// for selecting the type of connection to make
-	private int[] selectedConn = { 0 };
+	private int[] selectedConn = { 1 };
 	private List<String> selectedConnNames = new ArrayList<>();
 	private IConnection[] conn;
 
@@ -80,7 +80,10 @@ public class ConnectionManager {
 
 			int selected = selectedConn[0];
 
+			// let the selected connection draw its GUI
 			conn[selected].doGUI(imgui);
+
+			// button for connecting/disconnecting
 			if (conn[selected].isConnected()) {
 				if (imgui.button("Disconnect", new Vec2()))
 					disconnect(conn[selected]);
@@ -206,8 +209,8 @@ public class ConnectionManager {
 	private void connect(IConnection conn) {
 		// let the connection do the connecting
 		conn.connect();
-		// if it was successful in connecting, start the thread reading from the streams
 
+		// if it was successful in connecting, start the thread reading from the streams
 		if (conn.isConnected()) {
 			thread = new ConnectionThread(conn.getInputStream());
 			thread.start();
@@ -241,7 +244,7 @@ public class ConnectionManager {
 		}
 	}
 
-	/** Writes the given bytes to the sensor board */
+	/** Writes the given bytes to the robot */
 	private void sendCommand(byte... command) {
 		IConnection c = conn[selectedConn[0]];
 		if (c.isConnected()) {
