@@ -100,11 +100,13 @@ public class SerialConnection implements IConnection {
 		currentPort = port;
 
 		// wait for robot to become ready...( could probably be skipped)
+		/*
 		try {
 			Thread.sleep(2500);
 		} catch (InterruptedException ie) {
 			ie.printStackTrace();
 		}
+		*/
 	}
 
 	@Override
