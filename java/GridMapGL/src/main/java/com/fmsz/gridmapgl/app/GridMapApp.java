@@ -24,7 +24,6 @@ import com.fmsz.gridmapgl.graphics.Camera;
 import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
-import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.GridMap.GridMapData;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
@@ -95,7 +94,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	private Observation lastObservation;
 	// private float lastObservationLikelihood = 0;
 
-	private Pose currentCombinedPose = null;;
+	private Pose currentCombinedPose = null;
 
 	private Particle strongestParticle = null;
 
@@ -331,8 +330,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		// draw the last observation
 		if (lastObservation != null && drawLastObservation[0]) {
-			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose
-					: strongestParticle.pose;
+			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose : strongestParticle.pose;
 			rend.begin(ShapeType.LINE);
 
 			for (Measurement m : lastObservation.getMeasurements()) {
@@ -361,12 +359,10 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 			}
 			rend.end();
 		}
-
 	}
 
 	private void renderPose(Pose pose, Color col) {
-		rend.circle(pose.x, pose.y, 0.05f, col, 10);
-		rend.line(pose.x, pose.y, pose.x + 0.1f * MathUtil.cos(pose.theta), pose.y + 0.1f * MathUtil.sin(pose.theta), Color.BLACK);
+		rend.arrow(pose.x, pose.y, pose.theta, 0.10f, col);
 	}
 
 	private void calculateCombined() {

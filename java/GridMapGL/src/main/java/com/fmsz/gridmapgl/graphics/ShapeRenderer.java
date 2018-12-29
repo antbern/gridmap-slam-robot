@@ -17,13 +17,16 @@ package com.fmsz.gridmapgl.graphics;
 
 import static org.lwjgl.opengl.GL11.*;
 
+import com.fmsz.gridmapgl.math.MathUtil;
+
 import glm_.mat4x4.Mat4;
 import glm_.vec2.Vec2;
 
 /**
  * Implements the rendering interface in IRenderer using the primitive renderer (a lot faster than immediate mode)
  * 
- * Lots of inspiration taken from https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/graphics/glutils/ShapeRenderer.java
+ * Lots of inspiration taken from
+ * https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/graphics/glutils/ShapeRenderer.java
  */
 public class ShapeRenderer {
 	public static enum ShapeType {
@@ -132,7 +135,7 @@ public class ShapeRenderer {
 	public void circle(float x, float y, float radius, Color color, int numberOfSegments) {
 		// pre compute color bits
 		final float colorBits = color.toFloatBits();
-		
+
 		// the angle between each circle segment
 		double anglePerSegment = 2 * Math.PI / numberOfSegments;
 
@@ -191,9 +194,99 @@ public class ShapeRenderer {
 			renderer.color(colorBits);
 			renderer.vertex(pointX + x, pointY + y, 0);
 		}
-		
+
 		renderer.color(colorBits);
 		renderer.vertex(x, y, 0);
+
+	}
+
+	// pre-computed sine and cosine values for the "back-wing" of the arrow
+	private static final float arrowAngle = (float) (MathUtil.DEG_TO_RAD * 45);
+	private static final float aSin = MathUtil.sin(arrowAngle);
+	private static final float aCos = MathUtil.cos(arrowAngle);
+
+	public void arrow(float x, float y, float rot, float radius, Color color) {
+		// pre-compute color bits
+		final float colorBits = color.toFloatBits();
+
+		// pre compute sin and cos for the rotation
+		float c = (float) Math.cos(rot);
+		float s = (float) Math.sin(rot);
+
+		// Used Wolfram Alpha for the following trigonometric identities for the corner points:
+		// cos(t+pi-a) = -sin(a)sin(t)-cos(a)cos(t)
+		// sin(t+pi-a) = sin(a)cos(t)-cos(a)sin(t)
+		// cos(t+pi+a) = sin(a)sin(t)-cos(a)cos(t)
+		// sin(t+pi+a) = sin(a)-cos(t)-cos(a)sin(t)
+
+		// pre compute the factors above for the position of the corner points
+		float leftCos = (-aSin * s - aCos * c);
+		float leftSin = (aSin * c - aCos * s);
+		float rightCos = (aSin * s - aCos * c);
+		float rightSin = (aSin * -c - aCos * s);
+
+		if (currentShapeType == ShapeType.FILLED) {
+			check(ShapeType.FILLED, null, 3 * 2);
+
+			// front
+			renderer.color(colorBits);
+			renderer.vertex(x + c * radius, y + s * radius, 0);
+
+			// back left
+			renderer.color(colorBits);
+			renderer.vertex(x + leftCos * radius, y + leftSin * radius, 0);
+
+			// back middle
+			renderer.color(colorBits);
+			renderer.vertex(x - c * (radius / 3), y - s * (radius / 3), 0);
+
+			// back middle (again, starting a new triangle)
+			renderer.color(colorBits);
+			renderer.vertex(x - c * (radius / 3), y - s * (radius / 3), 0);
+
+			// back right
+			renderer.color(colorBits);
+			renderer.vertex(x + rightCos * radius, y + rightSin * radius, 0);
+
+			// front
+			renderer.color(colorBits);
+			renderer.vertex(x + c * radius, y + s * radius, 0);
+
+		} else {
+			check(ShapeType.LINE, ShapeType.POINT, 4 * 2);
+
+			// front
+			renderer.color(colorBits);
+			renderer.vertex(x + c * radius, y + s * radius, 0);
+
+			// back left
+			renderer.color(colorBits);
+			renderer.vertex(x + leftCos * radius, y + leftSin * radius, 0);
+
+			// back left (again, starting a new line)
+			renderer.color(colorBits);
+			renderer.vertex(x + leftCos * radius, y + leftSin * radius, 0);
+
+			// back middle
+			renderer.color(colorBits);
+			renderer.vertex(x - c * (radius / 3), y - s * (radius / 3), 0);
+
+			// back middle (again, starting a new line)
+			renderer.color(colorBits);
+			renderer.vertex(x - c * (radius / 3), y - s * (radius / 3), 0);
+
+			// back right
+			renderer.color(colorBits);
+			renderer.vertex(x + rightCos * radius, y + rightSin * radius, 0);
+
+			// back right (again, starting a new line)
+			renderer.color(colorBits);
+			renderer.vertex(x + rightCos * radius, y + rightSin * radius, 0);
+
+			// front
+			renderer.color(colorBits);
+			renderer.vertex(x + c * radius, y + s * radius, 0);
+		}
 
 	}
 

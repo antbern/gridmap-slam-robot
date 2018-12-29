@@ -361,6 +361,8 @@ public class Main2 {
 		gln.GlnKt.glViewport(window.getFramebufferSize());
 		gln.GlnKt.glClearColor(clearColor);
 		glClear(GL_COLOR_BUFFER_BIT);
+		glFrontFace(GL_CCW);
+		glEnable(GL_CULL_FACE);
 
 		// let the camera recalculate stuff if needed
 		cam.update();
