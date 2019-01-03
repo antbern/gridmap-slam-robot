@@ -91,7 +91,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 	private DataRecorder recorder;
 
-	private Observation lastObservation;
+	private Observation lastObservation, lastRawObservation;
 	// private float lastObservationLikelihood = 0;
 
 	private Pose currentCombinedPose = null;
@@ -126,6 +126,22 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	@Override
 	public void onHandleData(TimeFrame frame) {
 		lastObservation = frame.z;
+		lastRawObservation = new Observation();
+		
+		System.out.println(frame.u.dTheta);
+		
+		// compensate for the rotation in the odometry before processing the observation
+		int count = 0;
+		int length = frame.z.getNumberOfMeasurements();
+		for(Measurement m: frame.z.getMeasurements()) {
+			// create a copy (to draw the original observation)
+			lastRawObservation.addMeasurement(new Measurement(m.angle, m.distance, m.wasHit));
+			
+			// compensate rotation of robot
+			double dtheta = frame.u.dTheta * (1 - (double)count / length);
+			m.angle -= dtheta;
+			count++;
+		}
 
 		neff = slam.update(lastObservation, frame.u);
 
@@ -335,6 +351,10 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 			for (Measurement m : lastObservation.getMeasurements()) {
 				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), (m.wasHit ? Color.GREEN : Color.RED));
+			}
+			
+			for (Measurement m : lastRawObservation.getMeasurements()) {
+				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), Color.BLUE);
 			}
 
 			rend.end();
