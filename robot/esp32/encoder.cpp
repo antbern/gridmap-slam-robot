@@ -35,6 +35,14 @@ void IRAM_ATTR readEncoderRight_ISR() {
 
 
 void initEncoders(){
+
+    // setup pin directions
+	pinMode(MOTOR_LEFT_ENCA, INPUT);
+	pinMode(MOTOR_LEFT_ENCB, INPUT);
+
+    pinMode(MOTOR_RIGHT_ENCA, INPUT);
+	pinMode(MOTOR_RIGHT_ENCB, INPUT);
+
     // set up pin definitions
     encLeft.encoderAPin = MOTOR_LEFT_ENCA;
     encLeft.encoderBPin = MOTOR_LEFT_ENCB;

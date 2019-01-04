@@ -12,8 +12,8 @@
 
 #include "pins.h"
 
-
 #include "encoder.h"
+#include "pid.h"
 
 //// VARIABLES ////
 TFmini tfmini;
@@ -24,23 +24,11 @@ char doContinously = 0;
 unsigned short step_counter = 0, next_steps = 1;
 
 // PID values for the motor controllers
-double Kp = 0.55276367534483;//0.610694929511361;//0.641817786149385 ;//6.458906368104240;//5.061601496636267;//3.286079178973016;
-double Ki = 1.64455966045303;//1.34329498731559;//1.169731890184110 ;//21.544597297186854;//59.064657944882540;//70.241507066863450; 
-double Kd = 0.0101674410396297;//0.0220997968974464;
-double Tf = 1/11.8209539589613;//1/5.57670843490099;
+const double Kp = 0.55276367534483;//0.610694929511361;//0.641817786149385 ;//6.458906368104240;//5.061601496636267;//3.286079178973016;
+const double Ki = 1.64455966045303;//1.34329498731559;//1.169731890184110 ;//21.544597297186854;//59.064657944882540;//70.241507066863450; 
+const double Kd = 0.0101674410396297;//0.0220997968974464;
+const double Tf = 1/11.8209539589613;//1/5.57670843490099;
 
-typedef struct {
-    double Kp = 0.0;
-    double Ki = 0.0;
-    double Kd = 0.0;
-    double Tf = 0.0;
-
-    double P = 0.0;
-    double I = 0.0;
-    double D = 0.0;
-
-    double e_old = 0.0;
-} PID_t;
 
 // struct defining the motor properties
 typedef struct {
@@ -76,15 +64,12 @@ void setup() {
     digitalWrite(MOTOR_LEFT_EN, HIGH);
     pinMode(MOTOR_LEFT_DIRA, OUTPUT);
     pinMode(MOTOR_LEFT_DIRB, OUTPUT);
-	pinMode(MOTOR_LEFT_ENCA, INPUT);
-	pinMode(MOTOR_LEFT_ENCB, INPUT);
 	
     pinMode(MOTOR_RIGHT_EN, OUTPUT);
     digitalWrite(MOTOR_RIGHT_EN, HIGH);
     pinMode(MOTOR_RIGHT_DIRA, OUTPUT);
     pinMode(MOTOR_RIGHT_DIRB, OUTPUT);
-	pinMode(MOTOR_RIGHT_ENCA, INPUT);
-	pinMode(MOTOR_RIGHT_ENCB, INPUT);
+	
 
 
     // stepper motor
@@ -343,27 +328,6 @@ void handle_motor(motor_t* motor, double h){
     // drive the motor with this signal
     actuate_motor(motor, saturated_u); 
 
-}
-
-// does the PID calculation and returns the new control output
-double calculate_pid(PID_t* pid, double error, double h){
-    // proportional part
-    pid->P = pid->Kp * error;
-
-    // derivative part
-    pid->D = pid->Tf / (pid->Tf + h) * pid->D + pid->Kd / (pid->Tf + h) * (error - pid->e_old);
-
-    // calculate output
-    double u = pid->P + pid->I + pid->D;
-
-    // integral part
-    pid->I += pid->Ki * h * error;
-
-    // save error
-    pid->e_old = error;
-
-    // return control signal
-    return u;
 }
 
 // motor function, input voltage in range -12 to 12 volts
