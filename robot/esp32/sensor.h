@@ -4,10 +4,11 @@
 #define SENSOR_H
 
 #include "Arduino.h"
+#include "WiFiClient.h"
 
 
 void initSensor();
-void doSensorLoop(Stream* stream);
+void doSensorLoop(WiFiClient* stream);
 
 void homeSensor();
 

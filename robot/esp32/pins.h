@@ -1,6 +1,8 @@
 #ifndef PINS_H
 #define PINS_H
 
+#define BUILTIN_LED 2
+
 // Serial2 pins, cannot be changed
 #define RDX2 16
 #define TXD2 17

@@ -1,6 +1,8 @@
 #include "sensor.h"
 
 #include "Arduino.h"
+#include "WiFiClient.h"
+
 #include "TFmini.h"
 
 #include "pins.h"
@@ -11,11 +13,11 @@
 TFmini tfmini;
 char doOnce = 0;
 char doContinously = 0;
-unsigned short step_counter = 0, next_steps = 1;
+unsigned short step_counter = 0, next_steps = 4;
 
 // private function prototypes
 void step_motor(unsigned short steps);
-void sendData(Stream* stream, short steps, short frontDistance, short backDistance);
+void sendData(WiFiClient* stream, short steps, short frontDistance, short backDistance);
 
 void initSensor(){
     // stepper motor pin definitions
@@ -46,7 +48,7 @@ void initSensor(){
 
 
 
-void doSensorLoop(Stream* stream){
+void doSensorLoop(WiFiClient* stream){
     // check if there are any incoming bytes on the serial port
 	if(stream->available() > 0){
 		// read one byte
@@ -132,6 +134,15 @@ void doSensorLoop(Stream* stream){
 
 		// take reading
         while(!tfmini.available());
+
+		/*
+		Serial.print("distance : ");
+		Serial.print(tfmini.getDistance());
+		Serial.print(", strength : ");
+		Serial.print(tfmini.getStrength());
+		Serial.print(", int time : ");
+		Serial.println(tfmini.getIntegrationTime());
+		*/
 		
 		// take and send the actual measurements
 		sendData(stream, step_counter, tfmini.getDistance() * 10, 0);
@@ -184,12 +195,23 @@ void step_motor(unsigned short steps){
 	}
 }
 
-inline void sendData(Stream* stream, short steps, short frontDistance, short backDistance){
-	stream->write(0x55); // start byte
+uint8_t buffer[7];
+inline void sendData(WiFiClient* stream, short steps, short frontDistance, short backDistance){
+/*	stream->write(0x55); // start byte
 	stream->write((steps >> 8) & 0xff);
 	stream->write((steps >> 0) & 0xff); 
 	stream->write((frontDistance >> 8) & 0xff);
 	stream->write((frontDistance >> 0) & 0xff);
 	stream->write((backDistance >> 8) & 0xff);
 	stream->write((backDistance >> 0) & 0xff);
+*/
+	buffer[0] = (0x55); // start byte
+	buffer[1] = ((steps >> 8) & 0xff);
+	buffer[2] = ((steps >> 0) & 0xff); 
+	buffer[3] = ((frontDistance >> 8) & 0xff);
+	buffer[4] = ((frontDistance >> 0) & 0xff);
+	buffer[5] = ((backDistance >> 8) & 0xff);
+	buffer[6] = ((backDistance >> 0) & 0xff);
+
+	stream->write((const uint8_t*)&buffer, 7);
 }
