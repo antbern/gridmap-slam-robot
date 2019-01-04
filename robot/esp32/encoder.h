@@ -1,6 +1,9 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
+// for the portMUX stuff
+#include "Arduino.h"
+
 // a struct holding the encoder values
 typedef struct {
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
