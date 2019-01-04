@@ -3,7 +3,7 @@
 	Soft AP: https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
 	Board Pinout (30 GPIOs): https://randomnerdtutorials.com/getting-started-with-esp32/
 */
-//#include <AiEsp32RotaryEncoder.h>
+
 #include "TFmini.h"
 #include <pthread.h>
 
@@ -17,18 +17,20 @@
 #include "motors.h"
 
 //// VARIABLES ////
-TFmini tfmini;
 
+// vairables for handling WiFi connection
+#include "wifi_settings.h"
+
+
+// variables for the "LiDAR" unit
+TFmini tfmini;
 char doOnce = 0;
 char doContinously = 0;
-
 unsigned short step_counter = 0, next_steps = 1;
 
 
 // thread for handling the motor pid control
 pthread_t motorThread;
-
-
 
 void setup() {
     // enable debug serial
