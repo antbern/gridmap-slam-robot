@@ -1,4 +1,9 @@
-
+/* Links
+	Static IP: https://randomnerdtutorials.com/esp32-static-fixed-ip-address-arduino-ide/
+	Soft AP: https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
+	Board Pinout (30 GPIOs): https://randomnerdtutorials.com/getting-started-with-esp32/
+*/
+//#include <AiEsp32RotaryEncoder.h>
 #include "TFmini.h"
 
 
@@ -11,14 +16,31 @@
 
 // stepper motor defines
 #define STEPPER_EN 23
-#define STEPPER_DIR 21
-#define STEPPER_STEP 22
+#define STEPPER_DIR 27
+#define STEPPER_STEP 26
 #define STEPPER_SENSOR 34
 
 #define MICROSTEPPING 2
 #define STEPS_PER_ROTATION (360*MICROSTEPPING)
 
+// dc motor defines
+#define MOTOR_RIGHT_EN 21
+#define MOTOR_RIGHT_DIRA 19 
+#define MOTOR_RIGHT_DIRB 18
+#define MOTOR_RIGHT_ENCA 32
+#define MOTOR_RIGHT_ENCB 35
 
+#define MOTOR_LEFT_EN 22
+#define MOTOR_LEFT_DIRA 5
+#define MOTOR_LEFT_DIRB 4
+#define MOTOR_LEFT_ENCA 25
+#define MOTOR_LEFT_ENCB 33
+
+
+#define ENC_COUNTS_PER_REV (32 * 30 * 2)
+
+
+#include "encoder.h"
 
 //// VARIABLES ////
 TFmini tfmini;
@@ -49,6 +71,8 @@ typedef struct {
 
 // struct defining the motor properties
 typedef struct {
+	encoder_t* enc;
+	uint8_t pwm_channel;
     int32_t current_encoder_counter = 0;       // current encoder count
     int32_t last_encoder_counter = 0;          // last encoder count, used for calculating rotational speed
     int32_t odometry_counter = 0;
@@ -62,11 +86,33 @@ typedef struct {
 
 motor_t motor_left, motor_right;
 
+
+
+double last_timer_us = 0,  h = 0;
+
+
 void setup() {
     // enable debug serial
     Serial.begin(115200);
 
     ///// SETUP PINS /////
+
+	// DC motors and encoders
+	pinMode(MOTOR_LEFT_EN, OUTPUT);	
+    digitalWrite(MOTOR_LEFT_EN, HIGH);
+    pinMode(MOTOR_LEFT_DIRA, OUTPUT);
+    pinMode(MOTOR_LEFT_DIRB, OUTPUT);
+	pinMode(MOTOR_LEFT_ENCA, INPUT);
+	pinMode(MOTOR_LEFT_ENCB, INPUT);
+	
+    pinMode(MOTOR_RIGHT_EN, OUTPUT);
+    digitalWrite(MOTOR_RIGHT_EN, HIGH);
+    pinMode(MOTOR_RIGHT_DIRA, OUTPUT);
+    pinMode(MOTOR_RIGHT_DIRB, OUTPUT);
+	pinMode(MOTOR_RIGHT_ENCA, INPUT);
+	pinMode(MOTOR_RIGHT_ENCB, INPUT);
+
+
     // stepper motor
 	pinMode(STEPPER_EN, OUTPUT);
 	pinMode(STEPPER_DIR, OUTPUT);
@@ -93,11 +139,61 @@ void setup() {
 	tfmini.setDetectionPattern(TFmini::DetectionPattern::Fixed);
 	tfmini.setDistanceMode(TFmini::DistanceMode::Meduim);
 
+
+	//we must initialize rorary encoder 
+	initEncoders();
+
+	///////////// Initialize DC MOTORs ///////////
+	
+	// set up motors and their PID-regulators
+    motor_left.pid.Kp = 0.55276367534483;
+    motor_left.pid.Ki = 1.64455966045303;
+    motor_left.pid.Kd = 0.0101674410396297;
+    motor_left.pid.Tf = 1/11.8209539589613;
+    motor_left.pins = {MOTOR_LEFT_EN, MOTOR_LEFT_DIRA, MOTOR_LEFT_DIRB};
+    motor_left.enc = &encLeft;
+	motor_left.pwm_channel = 0;
+
+    motor_right.pid.Kp = 0.55276367534483;
+    motor_right.pid.Ki = 1.64455966045303;
+    motor_right.pid.Kd = 0.0101674410396297;
+    motor_right.pid.Tf = 1/11.8209539589613;
+    motor_right.pins = {MOTOR_RIGHT_EN, MOTOR_RIGHT_DIRA, MOTOR_RIGHT_DIRB};
+    motor_right.enc =  &encRight;
+	motor_right.pwm_channel = 1;
+    	
+	motor_right.speed_reference = 0.0f;
+	motor_left.speed_reference = 0.0f;
+
+	// configure PWM chanels
+
+  	ledcSetup(motor_left.pwm_channel, 5000, 8);
+	ledcAttachPin(motor_left.pins.PIN_EN, motor_left.pwm_channel);
+
+	ledcSetup(motor_right.pwm_channel, 5000, 8);
+	ledcAttachPin(motor_right.pins.PIN_EN, motor_right.pwm_channel);
+
+    // initialize the time counter
+	last_timer_us = micros();	
+	
 }
 
 void loop() {
 
+	// get current time
+    unsigned long timer_us = micros();
 
+    // calculate elapsed time in seconds 
+    h = (double)(timer_us - last_timer_us) / 1000000.0; 
+
+    // store current time for next iteration
+    last_timer_us = timer_us; 
+
+	//Serial.println(timer_us);
+	//Serial.println(motor_right.enc->value);
+    handle_motor(&motor_left, h);
+	handle_motor(&motor_right, h);
+	
     // check if there are any incoming bytes on the serial port
 	if(Serial.available() > 0){
 		// read one byte
@@ -188,7 +284,7 @@ void loop() {
 		sendData(step_counter, tfmini.getDistance() * 10, 0);
 	
 	} else {
-		delay(10);
+		delay(16);
 	}
 }
 
@@ -243,4 +339,100 @@ void step_motor(unsigned short steps){
 		digitalWrite(STEPPER_STEP, LOW);
 		delayMicroseconds(800);
 	}
+}
+
+
+void handle_motor(motor_t* motor, double h){
+    double speed = getMotorRotationSpeed(motor, h);
+
+    // calculate error
+    double e = motor->speed_reference - speed;
+
+    // calculate control signal
+    double u = calculate_pid(&motor->pid, e, h);  
+
+    // constrain control signal to within +-12 volts
+    double saturated_u = constrain(u, -12.0, 12.0);
+
+    //Serial.println(speed);
+    
+    // drive the motor with this signal
+    actuate_motor(motor, saturated_u); 
+
+}
+
+// does the PID calculation and returns the new control output
+double calculate_pid(PID_t* pid, double error, double h){
+    // proportional part
+    pid->P = pid->Kp * error;
+
+    // derivative part
+    pid->D = pid->Tf / (pid->Tf + h) * pid->D + pid->Kd / (pid->Tf + h) * (error - pid->e_old);
+
+    // calculate output
+    double u = pid->P + pid->I + pid->D;
+
+    // integral part
+    pid->I += pid->Ki * h * error;
+
+    // save error
+    pid->e_old = error;
+
+    // return control signal
+    return u;
+}
+
+// motor function, input voltage in range -12 to 12 volts
+void actuate_motor(motor_t* motor, double u){
+    // cap u in the range -12 to 12 volts
+    u = constrain(u, -12.0, 12.0);
+
+
+	// theese small voltages will only make the motors whine anyway
+	if( abs(u) < 0.6)
+		u = 0;
+
+    // convert voltage to pwm duty cycle
+    u = 100.0 * (u / 12.0);
+
+    // convert pwm duty cycle to raw value
+    uint8_t PWM_VALUE = (uint8_t) abs(u * (double) 255 / 100.0 );
+
+/*
+    Serial.print(motor->pins.PIN_EN);
+    Serial.print(":");
+    Serial.println(PWM_VALUE);
+*/
+
+    //analogWrite(motor->pins.PIN_EN, PWM_VALUE);
+	ledcWrite(motor->pwm_channel, PWM_VALUE);
+
+
+    if(u >= 0){
+        // forward
+        digitalWrite(motor->pins.PIN_DIRA, HIGH);
+        digitalWrite(motor->pins.PIN_DIRB, LOW);
+    }else{
+        // backward
+        digitalWrite(motor->pins.PIN_DIRA, LOW);
+        digitalWrite(motor->pins.PIN_DIRB, HIGH);
+    }
+}
+
+double getMotorRotationSpeed(motor_t* motor, double dt){
+    // read motor encoder
+    motor->current_encoder_counter = motor->enc->value;
+
+    // calculate difference in encoder counts since last time
+    double position_delta = motor->current_encoder_counter - (double)motor->last_encoder_counter;
+
+     // save current position
+    motor->last_encoder_counter = motor->current_encoder_counter;
+
+    // increase odometry counter
+    motor->odometry_counter += position_delta;
+
+    // calculate and return current speed in rad/s
+    return (double) 2.0 * PI * position_delta / ENC_COUNTS_PER_REV / dt;
+
 }
