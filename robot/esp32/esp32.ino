@@ -5,6 +5,7 @@
 */
 //#include <AiEsp32RotaryEncoder.h>
 #include "TFmini.h"
+#include <pthread.h>
 
 
 //// PIN DEFINES ////
@@ -86,6 +87,7 @@ typedef struct {
 
 motor_t motor_left, motor_right;
 
+pthread_t motorThread;
 
 
 double last_timer_us = 0,  h = 0;
@@ -175,24 +177,36 @@ void setup() {
 
     // initialize the time counter
 	last_timer_us = micros();	
+
+	// start a new thread for the motor
+	int ret = pthread_create(&motorThread, NULL, motorThreadLoop, NULL);
+	if(ret){
+		Serial.println("Error creating thread");
+	}
 	
 }
 
+void* motorThreadLoop(void* parameter) {
+	while(true){
+		// get current time
+		unsigned long timer_us = micros();
+
+		// calculate elapsed time in seconds 
+		h = (double)(timer_us - last_timer_us) / 1000000.0; 
+
+		// store current time for next iteration
+		last_timer_us = timer_us; 
+
+		//Serial.println(timer_us);
+		//Serial.println(motor_right.enc->value);
+		handle_motor(&motor_left, h);
+		handle_motor(&motor_right, h);
+
+		delay(10);
+	}
+}
+
 void loop() {
-
-	// get current time
-    unsigned long timer_us = micros();
-
-    // calculate elapsed time in seconds 
-    h = (double)(timer_us - last_timer_us) / 1000000.0; 
-
-    // store current time for next iteration
-    last_timer_us = timer_us; 
-
-	//Serial.println(timer_us);
-	//Serial.println(motor_right.enc->value);
-    handle_motor(&motor_left, h);
-	handle_motor(&motor_right, h);
 	
     // check if there are any incoming bytes on the serial port
 	if(Serial.available() > 0){
@@ -283,8 +297,6 @@ void loop() {
 		// take and send the actual measurements
 		sendData(step_counter, tfmini.getDistance() * 10, 0);
 	
-	} else {
-		delay(16);
 	}
 }
 
