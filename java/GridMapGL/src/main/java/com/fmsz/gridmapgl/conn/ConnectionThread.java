@@ -45,13 +45,18 @@ public class ConnectionThread extends Thread {
 		while (!isInterrupted()) {
 			try {
 				// do we have the 5 bytes needed for a packet?
-				if (dis.available() >= 7) {
-					if (dis.read() == 0x55) {
+				if (dis.available() >= 8) {
+					if (dis.readShort() == 0x5555) {
 						short steps = dis.readShort();
 						short frontDistance = dis.readShort();
 						short backDistance = dis.readShort();
+						
+						// reorganize bytes (convert from little to big endian)
+						steps = (short) ((steps & 0xff) << 8 | (steps >> 8) & 0xff);
+						frontDistance = (short) ((frontDistance & 0xff) << 8 | (frontDistance >> 8) & 0xff);
+						backDistance = (short) ((backDistance & 0xff) << 8 | (backDistance >> 8) & 0xff);
 
-						// System.out.println(steps + "-> " + frontDistance + ", " + backDistance);
+						System.out.println(steps + "-> " + frontDistance + ", " + backDistance);
 
 						// if this is a "new packet" indicator?
 						if (steps < 0) {

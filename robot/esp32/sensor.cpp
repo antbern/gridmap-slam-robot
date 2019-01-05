@@ -2,12 +2,22 @@
 
 #include "Arduino.h"
 #include "WiFiClient.h"
-
+#include "endian.h"
 #include "TFmini.h"
 
 #include "pins.h"
 #include "motors.h"
 
+// struct holding a single measurement (note that the struct's variables must be aligned on a 2-byte boundary, or padding bytes will be added)
+typedef struct {
+	short header = 0x5555;
+	short steps;
+	short frontDistance, backDistance;
+} measurement_t;
+
+// buffer storing all measurements taken during this loop (with a maximum of STEPS_PER_ROTATION samples)
+measurement_t measurements[STEPS_PER_ROTATION];
+int measurement_count = 0;
 
 // variables for the "LiDAR" unit
 TFmini tfmini;
@@ -17,7 +27,6 @@ unsigned short step_counter = 0, next_steps = 4;
 
 // private function prototypes
 void step_motor(unsigned short steps);
-void sendData(WiFiClient* stream, short steps, short frontDistance, short backDistance);
 
 void initSensor(){
     // stepper motor pin definitions
@@ -119,8 +128,16 @@ void doSensorLoop(WiFiClient* stream){
             step_counter -= STEPS_PER_ROTATION;
 
 			// yes, send message (with odometry information) to indicate that
-		    sendData(stream, -1, motor_left.odometry_counter, motor_right.odometry_counter);
-            //sendData(-1, 0, 0);
+			measurements[measurement_count].steps = -1;
+			measurements[measurement_count].frontDistance = motor_left.odometry_counter;
+			measurements[measurement_count].backDistance = motor_right.odometry_counter;
+			measurement_count++;
+
+			// write all data to client
+			stream->write((const uint8_t*) &measurements, sizeof(measurement_t) * measurement_count);
+
+			// reset buffer counter
+			measurement_count = 0;
 			
 			// reset odometry counters
 			motor_left.odometry_counter = 0;
@@ -137,25 +154,14 @@ void doSensorLoop(WiFiClient* stream){
 
 		// take reading
         while(!tfmini.available());
-
-		/*
-		Serial.print("distance : ");
-		Serial.print(tfmini.getDistance());
-		Serial.print(", strength : ");
-		Serial.print(tfmini.getStrength());
-		Serial.print(", int time : ");
-		Serial.println(tfmini.getIntegrationTime());
-		*/
 		
-		// take and send the actual measurements
-		sendData(stream, step_counter, tfmini.getDistance() * 10, 0);
-	
+		// save the reading to our buffer
+		measurements[measurement_count].steps = step_counter;
+		measurements[measurement_count].frontDistance = tfmini.getDistance() * 10;
+		measurements[measurement_count].backDistance = 0;
+		measurement_count++;	
 	}
 }
-
-
-
-
 
 void homeSensor(){
 	// enable stepper
@@ -184,9 +190,7 @@ void homeSensor(){
 	
 	// disable stepper
 	digitalWrite(STEPPER_EN, HIGH);
-	
-	// reset position step counter
-	//step_counter = 0;
+
 }
 
 void step_motor(unsigned short steps){
@@ -196,25 +200,4 @@ void step_motor(unsigned short steps){
 		digitalWrite(STEPPER_STEP, LOW);
 		delayMicroseconds(800);
 	}
-}
-
-uint8_t buffer[7];
-inline void sendData(WiFiClient* stream, short steps, short frontDistance, short backDistance){
-/*	stream->write(0x55); // start byte
-	stream->write((steps >> 8) & 0xff);
-	stream->write((steps >> 0) & 0xff); 
-	stream->write((frontDistance >> 8) & 0xff);
-	stream->write((frontDistance >> 0) & 0xff);
-	stream->write((backDistance >> 8) & 0xff);
-	stream->write((backDistance >> 0) & 0xff);
-*/
-	buffer[0] = (0x55); // start byte
-	buffer[1] = ((steps >> 8) & 0xff);
-	buffer[2] = ((steps >> 0) & 0xff); 
-	buffer[3] = ((frontDistance >> 8) & 0xff);
-	buffer[4] = ((frontDistance >> 0) & 0xff);
-	buffer[5] = ((backDistance >> 8) & 0xff);
-	buffer[6] = ((backDistance >> 0) & 0xff);
-
-	stream->write((const uint8_t*)&buffer, 7);
 }

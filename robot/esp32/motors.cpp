@@ -20,18 +20,18 @@ void initMotors(){
 
 
     // set up motors and their PID-regulators
-    motor_left.pid.Kp = 0.55276367534483;
-    motor_left.pid.Ki = 1.64455966045303;
-    motor_left.pid.Kd = 0.0101674410396297;
-    motor_left.pid.Tf = 1/11.8209539589613;
+    motor_left.pid.Kp = PID_KP;
+    motor_left.pid.Ki = PID_KI;
+    motor_left.pid.Kd = PID_KD;
+    motor_left.pid.Tf = PID_TF;
     motor_left.pins = {MOTOR_LEFT_EN, MOTOR_LEFT_DIRA, MOTOR_LEFT_DIRB};
     motor_left.enc = &encLeft;
 	motor_left.pwm_channel = 0;
 
-    motor_right.pid.Kp = 0.55276367534483;
-    motor_right.pid.Ki = 1.64455966045303;
-    motor_right.pid.Kd = 0.0101674410396297;
-    motor_right.pid.Tf = 1/11.8209539589613;
+    motor_right.pid.Kp = PID_KP;
+    motor_right.pid.Ki = PID_KI;
+    motor_right.pid.Kd = PID_KD;
+    motor_right.pid.Tf = PID_TF;
     motor_right.pins = {MOTOR_RIGHT_EN, MOTOR_RIGHT_DIRA, MOTOR_RIGHT_DIRB};
     motor_right.enc =  &encRight;
 	motor_right.pwm_channel = 1;
@@ -95,7 +95,7 @@ void* motorLoop(void* parameter) {
 		handle_motor(&motor_left, h);
 		handle_motor(&motor_right, h);
 
-		delay(10);
+		delay(MOTOR_LOOP_PERIOD_US);
 	}
 
     // we are exiting, stop motors
