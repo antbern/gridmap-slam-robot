@@ -34,6 +34,9 @@ extern motor_t motor_left, motor_right;
 
 
 void initMotors();
+void resetMotors();
+
+void stopMotorLoop();
 
 void* motorLoop(void* parameter);
 void handle_motor(motor_t* motor, double h);

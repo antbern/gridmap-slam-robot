@@ -45,7 +45,10 @@ void initSensor(){
 	////////////////////////
 }
 
-
+void resetSensor(){
+	doOnce = 0;
+	doContinously = 0;
+}
 
 
 void doSensorLoop(WiFiClient* stream){

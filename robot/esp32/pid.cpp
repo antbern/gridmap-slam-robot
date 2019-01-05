@@ -20,3 +20,10 @@ double calculate_pid(PID_t* pid, double error, double h){
     // return control signal
     return u;
 }
+
+void reset_pid(PID_t* pid){
+    pid->e_old = 0;
+    pid->P = 0;
+    pid->I = 0;
+    pid->D = 0;
+}

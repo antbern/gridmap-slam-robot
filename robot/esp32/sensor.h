@@ -11,5 +11,6 @@ void initSensor();
 void doSensorLoop(WiFiClient* stream);
 
 void homeSensor();
+void resetSensor();
 
 #endif SENSOR_H

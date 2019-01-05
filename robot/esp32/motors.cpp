@@ -3,7 +3,7 @@
 #include "pins.h"
 
 motor_t motor_left, motor_right;
-
+volatile bool running = false;
 
 void initMotors(){
 
@@ -50,6 +50,22 @@ void initMotors(){
 
 }
 
+void resetMotors() {
+    // reset speed reference and the speed PIDs
+    motor_left.speed_reference = 0;
+    motor_right.speed_reference = 0;
+    reset_pid(&motor_left.pid);
+    reset_pid(&motor_right.pid);
+
+    // stop motors
+    actuate_motor(&motor_left, 0);
+    actuate_motor(&motor_right, 0);
+}
+
+void stopMotorLoop(){
+    running = false;
+}
+
 void* motorLoop(void* parameter) {
     // initialize the time counter
 	unsigned long last_timer_us = micros();	
@@ -57,7 +73,14 @@ void* motorLoop(void* parameter) {
     unsigned long timer_us = 0;
     double h = 0;
 
-	while(true){
+    resetMotors();
+
+    // discard first speed readings as they may be erroneous
+    getMotorRotationSpeed(&motor_left, 0.1);
+    getMotorRotationSpeed(&motor_right, 0.1);
+
+    running = true;
+	while(running){
 		// get current time
 		timer_us = micros();
 
@@ -74,6 +97,9 @@ void* motorLoop(void* parameter) {
 
 		delay(10);
 	}
+
+    // we are exiting, stop motors
+    resetMotors();
 }
 
 void handle_motor(motor_t* motor, double h){

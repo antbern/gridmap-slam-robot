@@ -38,16 +38,6 @@ void setup() {
 
 	// set up networked connection
 	startWifi();
-
-	// home sensor
-	homeSensor();
-
-	// start a new thread for the motors
-	int ret = pthread_create(&motorThread, NULL, motorLoop, NULL);
-	if(ret){
-		Serial.println("Error creating thread");
-	}
-	
 }
 
 void startWifi(){
@@ -103,29 +93,34 @@ void startWifi(){
 
 
 void loop() {
-	//doSensorLoop(&Serial);   
-
 	// Listen for incoming clients
 	WiFiClient client = server.available();   
 
 	// a new client connects?
 	if (client) {                             
-		Serial.println("Client Connected");          
+		Serial.println("Client Connected");    
+
+		// home the sensor
+		homeSensor();
+
+		// start a new thread for the motors
+		int ret = pthread_create(&motorThread, NULL, motorLoop, NULL);
+		if(ret){
+			Serial.println("Error creating thread");
+		}
+
 
 		// loop while the client's connected         
 		while (client.connected()) { 
-
 			// do regular loop here
 			doSensorLoop(&client);
-			/*
-			if(client.available() > 0){
-				char c = client.read();             // read a byte, then
-				Serial.write(c);                    // print it out the serial monitor
-			}
-			*/
 		}
 
 		Serial.println("Client Disconnected");
+
+		// stop motors and reset sensor
+		stopMotorLoop();
+		resetSensor();
 	} 
 }
 
