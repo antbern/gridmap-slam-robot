@@ -1,8 +1,3 @@
-/* Links
-	Static IP: https://randomnerdtutorials.com/esp32-static-fixed-ip-address-arduino-ide/
-	Soft AP: https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
-	Board Pinout (30 GPIOs): https://randomnerdtutorials.com/getting-started-with-esp32/
-*/
 
 #include "WiFi.h"
 #include <pthread.h>

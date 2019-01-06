@@ -2,7 +2,6 @@
 
 #include "Arduino.h"
 #include "WiFiClient.h"
-#include "endian.h"
 #include "TFmini.h"
 
 #include "pins.h"

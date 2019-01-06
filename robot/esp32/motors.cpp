@@ -5,6 +5,12 @@
 motor_t motor_left, motor_right;
 volatile bool running = false;
 
+// number of ticks required for the desired loop period length
+const TickType_t xFrequency = MOTOR_LOOP_PERIOD_US / portTICK_PERIOD_MS ;
+
+// variable holding the last wake time
+TickType_t xLastWakeTime;
+
 void initMotors(){
 
     ///// SETUP PINS /////
@@ -79,6 +85,9 @@ void* motorLoop(void* parameter) {
     getMotorRotationSpeed(&motor_left, 0.1);
     getMotorRotationSpeed(&motor_right, 0.1);
 
+    // save time when started (for use with vTaskDelayUntil)
+    xLastWakeTime = xTaskGetTickCount ();
+
     running = true;
 	while(running){
 		// get current time
@@ -95,7 +104,8 @@ void* motorLoop(void* parameter) {
 		handle_motor(&motor_left, h);
 		handle_motor(&motor_right, h);
 
-		delay(MOTOR_LOOP_PERIOD_US);
+        // delay until the desired loop period is reached
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
 	}
 
     // we are exiting, stop motors
