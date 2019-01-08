@@ -58,3 +58,13 @@ void initEncoders(){
     attachInterrupt(digitalPinToInterrupt(encRight.encoderAPin), readEncoderRight_ISR, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(encRight.encoderBPin), readEncoderRight_ISR, CHANGE);
 }
+
+// resets the encoder
+void resetEncoder(encoder_t* enc){
+    portENTER_CRITICAL(&enc->mux);
+
+    enc->old_AB = 0;
+    enc->value = 0;
+
+    portEXIT_CRITICAL(&enc->mux);
+}

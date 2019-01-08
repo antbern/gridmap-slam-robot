@@ -190,6 +190,8 @@ void homeSensor(){
 	// disable stepper
 	digitalWrite(STEPPER_EN, HIGH);
 
+	// reset step counter
+	step_counter = 0;
 }
 
 void step_motor(unsigned short steps){

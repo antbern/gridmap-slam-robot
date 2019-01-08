@@ -19,5 +19,6 @@ const int8_t enc_states[16] = {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};
 extern encoder_t encLeft, encRight;
 
 void initEncoders();
+void resetEncoder(encoder_t* enc);
 
 #endif ENCODER_H

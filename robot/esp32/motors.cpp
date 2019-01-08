@@ -66,6 +66,18 @@ void resetMotors() {
     // stop motors
     actuate_motor(&motor_left, 0);
     actuate_motor(&motor_right, 0);
+
+    // reset the encoder values
+    resetEncoder(motor_left.enc);
+    resetEncoder(motor_right.enc);
+
+    motor_left.odometry_counter = 0;
+    motor_left.current_encoder_counter = 0;
+    motor_left.last_encoder_counter = 0;
+
+    motor_right.odometry_counter = 0;
+    motor_right.current_encoder_counter = 0;
+    motor_right.last_encoder_counter = 0;
 }
 
 void stopMotorLoop(){
