@@ -47,7 +47,7 @@ public class SLAM {
 	}
 
 	private ArrayList<Particle> particles;
-	private int numParticles = 200;
+	private int numParticles = 500;
 
 	private Particle strongestParticle = null;
 

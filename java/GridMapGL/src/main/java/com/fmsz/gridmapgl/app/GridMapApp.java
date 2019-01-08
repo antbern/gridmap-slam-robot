@@ -24,6 +24,7 @@ import com.fmsz.gridmapgl.graphics.Camera;
 import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
+import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.GridMap.GridMapData;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
@@ -127,18 +128,18 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	public void onHandleData(TimeFrame frame) {
 		lastObservation = frame.z;
 		lastRawObservation = new Observation();
-		
-		System.out.println(frame.u.dTheta);
+
+		System.out.printf("[Odemetry] Rot=%.2f (%.2f), D=%.2f \n", frame.u.dTheta, frame.u.dTheta * MathUtil.RAD_TO_DEG, frame.u.dCenter);
 		
 		// compensate for the rotation in the odometry before processing the observation
 		int count = 0;
-		int length = frame.z.getNumberOfMeasurements();
-		for(Measurement m: frame.z.getMeasurements()) {
+		int length = frame.z.getNumberOfMeasurements() - 1;
+		for (Measurement m : frame.z.getMeasurements()) {
 			// create a copy (to draw the original observation)
 			lastRawObservation.addMeasurement(new Measurement(m.angle, m.distance, m.wasHit));
-			
+
 			// compensate rotation of robot
-			double dtheta = frame.u.dTheta * (1 - (double)count / length);
+			double dtheta = frame.u.dTheta * (1 - (double) count / length);
 			m.angle -= dtheta;
 			count++;
 		}
@@ -346,13 +347,14 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		// draw the last observation
 		if (lastObservation != null && drawLastObservation[0]) {
-			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose : strongestParticle.pose;
+			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose
+					: strongestParticle.pose;
 			rend.begin(ShapeType.LINE);
 
 			for (Measurement m : lastObservation.getMeasurements()) {
 				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), (m.wasHit ? Color.GREEN : Color.RED));
 			}
-			
+
 			for (Measurement m : lastRawObservation.getMeasurements()) {
 				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), Color.BLUE);
 			}
