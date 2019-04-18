@@ -10,6 +10,7 @@
 void initSensor();
 void doSensorLoop(WiFiClient* stream);
 
+float readFloat(WiFiClient* stream);
 void homeSensor();
 void resetSensor();
 

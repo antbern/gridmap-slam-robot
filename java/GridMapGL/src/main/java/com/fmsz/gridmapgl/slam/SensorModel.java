@@ -20,8 +20,8 @@ public class SensorModel {
 	public static final float SENSOR_MAX_RANGE = 4.0f;
 	//public static final float SENSOR_NO_RESPONSE_THRESHHOLD = 8.0f;
 
-	public static final double P_FREE = 0.3f;
-	public static final double P_OCCUPPIED = 0.7f;
+	public static final double P_FREE = 0.30f;
+	public static final double P_OCCUPPIED = 0.9f;
 	public static final double P_PRIOR = 0.5f;
 
 	/**

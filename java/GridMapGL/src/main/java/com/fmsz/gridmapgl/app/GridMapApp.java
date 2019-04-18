@@ -126,22 +126,46 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 	@Override
 	public void onHandleData(TimeFrame frame) {
-		lastObservation = frame.z;
-		lastRawObservation = new Observation();
+		// set last observation to the raw one
+		lastRawObservation = frame.z;
 
 		System.out.printf("[Odemetry] Rot=%.2f (%.2f), D=%.2f \n", frame.u.dTheta, frame.u.dTheta * MathUtil.RAD_TO_DEG, frame.u.dCenter);
-		
+
+		// create new observation containing corrected data
+		lastObservation = new Observation();
+
 		// compensate for the rotation in the odometry before processing the observation
-		int count = 0;
-		int length = frame.z.getNumberOfMeasurements() - 1;
+		int i = 0;
+		int length = frame.z.getNumberOfMeasurements();
 		for (Measurement m : frame.z.getMeasurements()) {
-			// create a copy (to draw the original observation)
-			lastRawObservation.addMeasurement(new Measurement(m.angle, m.distance, m.wasHit));
 
 			// compensate rotation of robot
-			double dtheta = frame.u.dTheta * (1 - (double) count / length);
-			m.angle -= dtheta;
-			count++;
+
+			// calculate negative "time factor" since we want to transform "back" the measurement
+			double d_i = -(length - i) / (double) length;
+
+			// measurement coordinates in robot's coordinate system
+			// double x_p = m.distance * MathUtil.cos(m.angle);
+			// double y_p = m.distance * MathUtil.sin(m.angle);
+
+			// calculate difference in angle and x (forward) motion
+			double delta_theta = frame.u.dTheta * d_i;
+			double delta_x = frame.u.dCenter * d_i;
+
+			// rotate measurement point and apply x-movement
+			// double x_a = x_p * MathUtil.cos(delta_theta) - y_p * MathUtil.sin(delta_theta) + delta_x;
+			// double y_a = x_p * MathUtil.sin(delta_theta) + y_p * MathUtil.cos(delta_theta);
+
+			// calculate new coordinates for this measurement (in local coordinate frame) by adding rotation and translation component
+			double x_a = m.distance * MathUtil.cos(m.angle + delta_theta) + delta_x;
+			double y_a = m.distance * MathUtil.sin(m.angle + delta_theta);
+
+			// add new measurement
+			lastObservation.addMeasurement(new Measurement(x_a, y_a, m.wasHit, 0));
+
+			// increase count
+			i++;
+
 		}
 
 		neff = slam.update(lastObservation, frame.u);
@@ -150,6 +174,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 		if (automaticResampling[0] && neff < slam.getParticles().size() / 2)
 			slam.resample();
 
+		// note that the strongest particle may no longer be correct as resampling has happened and the particle may no longer be active!
 		strongestParticle = slam.getStrongestParticle();
 
 		currentCombinedPose = slam.getWeightedPose();

@@ -21,6 +21,7 @@ import com.fmsz.gridmapgl.app.Util;
 import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
+import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
 
 import glm_.vec2.Vec2;
@@ -172,7 +173,7 @@ public class GridMap {
 		float measuredDistance = (float) m.distance / resolution;
 
 		// stores the deltas in x and y direction
-		float dX, dY, distance;//, distanceSq;
+		float dX, dY, distance;// , distanceSq;
 
 		// float hitTolerance = 2;
 		// float measuredDistanceSq = measuredDistance * measuredDistance;
@@ -181,7 +182,7 @@ public class GridMap {
 
 		// initialize the RayIterator, the 2 is to give the sensor model the possibility to act correctly for cells "behind" the end point
 		// and should be >= the parameter to inverseSensorModel below. Higher values gives "thicker" walls
-		rayIterator.init(startX, startY, endX, endY, 2);
+		rayIterator.init(startX + 0.5f, startY + 0.5f, endX + 0.5f, endY + 0.5f, 2);
 		while (rayIterator.hasNext()) {
 			Vec2i cell = rayIterator.next();
 
@@ -195,7 +196,7 @@ public class GridMap {
 			// the 2 is used as a "threshold", defining an interval where the cell should be considered occupied based on the measurement
 			map.logData[cell.x + cell.y * gridSize.x] += Util
 					.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, m.wasHit, 2));
-			
+
 			// map.logData[cell.x + cell.y * gridSize.x] += Util
 			// .logOdds(SensorModel.inverseSensorModelSq(distanceSq, measuredDistanceSq, m.wasHit, maxDistSq, minDistSq));
 		}
@@ -232,15 +233,15 @@ public class GridMap {
 	 *            the Pose, x
 	 * @return p(z | m, x)
 	 */
-	private double zHit = 0.9, zRandom = 1 - zHit;
+	private double zHit = 0.8, zRandom = 1 - zHit;
 
 	public double probabilityOf(GridMapData map, Observation obs, Pose p) {
 		double product = 1;
 
 		for (Measurement m : obs.getMeasurements()) {
 			// only care about measurements that hit something
-			// if (!m.wasHit)
-			// continue;
+			if (!m.wasHit)
+				continue;
 
 			// look up the probability of the end point being occupied and multiply by the product of the others
 			int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
@@ -255,8 +256,8 @@ public class GridMap {
 				}
 				*/
 
-				if (!m.wasHit)
-					val = 1 - val;
+				// if (!m.wasHit)
+				// val = 1 - val;
 
 				// multiply all probabilities together
 
@@ -300,8 +301,8 @@ public class GridMap {
 		double maxProb = 0;
 		Pose currentPose = new Pose(startPose);
 
-		float xSpan = 0.2f, ySpan = 0.2f, thetaSpan = (float) (15 / 360f * 2 * Math.PI);
-		float transStep = 0.04f, thetaStep = thetaSpan / 5;
+		float xSpan = 0.15f, ySpan = 0.15f, thetaSpan = (float) (15 * MathUtil.DEG_TO_RAD);
+		float transStep = 0.05f, thetaStep = thetaSpan / 5;
 
 		// test all combinations
 		for (float dx = -xSpan; dx < xSpan; dx += transStep) {
@@ -319,7 +320,7 @@ public class GridMap {
 			}
 		}
 
-		System.out.println(maxProb);
+		// System.out.println(maxProb);
 
 		return best;
 	}

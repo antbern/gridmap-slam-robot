@@ -19,9 +19,9 @@ package com.fmsz.gridmapgl.slam;
 public class TimeFrame {
 	public Observation z;
 	public Odometry u;
-	
+
 	// optional timeStamp variable
-	//public float timeStamp = -1;
+	// public float timeStamp = -1;
 
 	public TimeFrame(Observation z, Odometry u) {
 		this.z = z;

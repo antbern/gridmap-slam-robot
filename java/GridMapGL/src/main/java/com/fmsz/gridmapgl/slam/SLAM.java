@@ -51,7 +51,7 @@ public class SLAM {
 
 	private Particle strongestParticle = null;
 
-	//private Random rand = new Random();
+	// private Random rand = new Random();
 
 	public SLAM() {
 		gridMap = new GridMap(6.0f, 6.0f, 0.05f, new Vec2(-3.0f, -3.0f));
@@ -77,6 +77,8 @@ public class SLAM {
 
 	/** The main SLAM update loop */
 	public double update(Observation z, Odometry u) {
+		// skip map integration if this measurement involved a large rotation as the measurements are very uncertain
+		boolean skipUpdate = Math.abs(u.dTheta) > MathUtil.DEG_TO_RAD * 30;
 
 		strongestParticle = null;
 
@@ -89,11 +91,16 @@ public class SLAM {
 			// calculate the weight of this particle as p(z|x,m)
 			gridMap.computeLikelihoodMap(p.m);
 			// p.pose = gridMap.findBestPose(p.m, z, p.pose);
+
 			p.weight = gridMap.probabilityOf(p.m, z, p.pose);
 			weightSum += p.weight;
 
-			// integrate the measurement into the particles map
-			gridMap.integrateObservation(p.m, z, p.pose);
+			if (!skipUpdate) {
+
+				// integrate the measurement into the particles map
+				gridMap.integrateObservation(p.m, z, p.pose);
+
+			}
 
 			// store the particle with highest weight
 			if (strongestParticle == null)
@@ -141,16 +148,11 @@ public class SLAM {
 		particles = newParticles;
 	}
 
-	// TODO: This is just for testing purposes!
 	private Pose sampleMotionModel(Pose x, Odometry u) {
 		Pose p = new Pose(x);
-		// apply some noise
-		// p.x += 0.05f * rand.nextGaussian();
-		// p.y += 0.05f * rand.nextGaussian();
-
-		// p.theta += 2.0 / 180.0 * Math.PI * rand.nextGaussian();
-
-		if(u != null)
+		
+		// apply odometry motion
+		if (u != null)
 			u.apply(p);
 
 		return p;
@@ -169,7 +171,6 @@ public class SLAM {
 
 		return new Pose((float) (xSum / weightSum), (float) (ySum / weightSum), (float) (thetaSum / weightSum));
 
-		// throw new UnsupportedOperationException("getCurrentBestPose() not implemented!");
 	}
 
 	public double calculateNeff() {

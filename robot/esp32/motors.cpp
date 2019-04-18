@@ -111,8 +111,6 @@ void* motorLoop(void* parameter) {
 		// store current time for next iteration
 		last_timer_us = timer_us; 
 
-		//Serial.println(timer_us);
-		//Serial.println(motor_right.enc->value);
 		handle_motor(&motor_left, h);
 		handle_motor(&motor_right, h);
 

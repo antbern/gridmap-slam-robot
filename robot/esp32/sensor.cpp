@@ -84,32 +84,19 @@ void doSensorLoop(WiFiClient* stream){
 			next_steps = (short) (STEPS_PER_ROTATION * ((float)d / 360.0f));
 			
 		}else if (input == 0x10){ // "set left motor speed" - command?
-			// wait for 4 bytes
-			while(stream->available() < 4);
-			
-			// get the four bytes and convert them to a float
-			char buffer[4];
-			buffer[3] = stream->read();
-			buffer[2] = stream->read();
-			buffer[1] = stream->read();
-			buffer[0] = stream->read();
-			
-			float value = *((float*)&buffer);
-			
-			motor_left.speed_reference = (double) value;
+			motor_left.speed_reference = (double) readFloat(stream);
+
 		}else if (input == 0x11){ // "set right motor speed" - command?
-			// wait for 4 bytes
-			while(stream->available() < 4);
-			
-			// get the four bytes and convert them to a float
-			char buffer[4];
-			buffer[3] = stream->read();
-			buffer[2] = stream->read();
-			buffer[1] = stream->read();
-			buffer[0] = stream->read();
-			
-			float value = *((float*)&buffer);
-			motor_right.speed_reference = (double) value;
+			motor_right.speed_reference = (double) readFloat(stream);
+
+		} else if (input == 0x15) { // set K_P command?
+			motor_left.pid.Kp = motor_right.pid.Kp = (double) readFloat(stream);
+		} else if (input == 0x16) { // set K_I command?
+			motor_left.pid.Ki = motor_right.pid.Ki = (double) readFloat(stream);
+		}else if (input == 0x17) { // set K_D command?
+			motor_left.pid.Kd = motor_right.pid.Kd = (double) readFloat(stream);
+		}else if (input == 0x18) { // set T_f command?
+			motor_left.pid.Tf = motor_right.pid.Tf = (double) readFloat(stream);
 		}
     }
 
@@ -157,9 +144,24 @@ void doSensorLoop(WiFiClient* stream){
 		// save the reading to our buffer
 		measurements[measurement_count].steps = step_counter;
 		measurements[measurement_count].frontDistance = tfmini.getDistance() * 10;
-		measurements[measurement_count].backDistance = 0;
+		measurements[measurement_count].backDistance = tfmini.getStrength();
 		measurement_count++;	
 	}
+}
+
+// reads a single float value from the provided WiFiClient (blocking)
+float readFloat(WiFiClient* stream) {
+	// wait for 4 bytes
+	while(stream->available() < 4);
+	
+	// get the four bytes and convert them to a float
+	char buffer[4];
+	buffer[3] = stream->read();
+	buffer[2] = stream->read();
+	buffer[1] = stream->read();
+	buffer[0] = stream->read();
+	
+	return *((float*)&buffer);
 }
 
 void homeSensor(){

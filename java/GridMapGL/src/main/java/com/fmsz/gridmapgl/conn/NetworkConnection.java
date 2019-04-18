@@ -13,9 +13,9 @@ public class NetworkConnection implements IConnection {
 	private char[] portBuff = new char[32];
 
 	// connection stuff
-	private static final String defaultHost = "localhost";
+	private static final String defaultHost = "192.168.0.185";
 	private static final String defaultPort = "5555";
-	
+
 	private Socket socket = null;
 	private InputStream is;
 	private OutputStream os;

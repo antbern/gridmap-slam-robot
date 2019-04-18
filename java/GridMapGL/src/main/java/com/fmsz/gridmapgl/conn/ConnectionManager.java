@@ -27,8 +27,8 @@ import imgui.ImGui;
 import imgui.internal.Dir;
 
 /**
- * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial
- * connection to the correct port and with the correct speed settings
+ * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial connection to the
+ * correct port and with the correct speed settings
  * 
  * @author Anton
  *
@@ -55,6 +55,12 @@ public class ConnectionManager {
 	private final float[] selectedSpeed = { 10.0f };
 	private final Vec2 arrowPadding = new Vec2(10, 10);
 	private Dir lastDirection = Dir.None;
+
+	// Pid values
+	private final float[] pidTuningP = { 2.5f /*0.55f*/ };
+	private final float[] pidTuningI = { 1.5f/*1.6445f*/ };
+	private final float[] pidTuningD = { 0/*0.01016f*/ };
+	private final float[] pidTuningTf = { 11.82f };
 
 	public ConnectionManager() {
 		// create sensor rate stuff
@@ -197,10 +203,23 @@ public class ConnectionManager {
 				}
 
 				// send speed values to robot
-				sendSpeedCommand(true, speedLeft);
-				sendSpeedCommand(false, speedRight);
+				sendFloat(0x10, speedLeft);
+				sendFloat(0x11, speedRight);
 			}
 
+			// PID tuning sliders
+			if (imgui.dragFloat("Kp", pidTuningP, 0.001f, 0, 10, "%.4f", 1f)) {
+				sendFloat(0x15, pidTuningP[0]);
+			}
+			if (imgui.dragFloat("Ki", pidTuningI, 0.001f, 0, 10, "%.4f", 1f)) {
+				sendFloat(0x16, pidTuningI[0]);
+			}
+			if (imgui.dragFloat("Kd", pidTuningD, 0.001f, 0, 10, "%.4f", 1f)) {
+				sendFloat(0x17, pidTuningD[0]);
+			}
+			if (imgui.dragFloat("Tf = 1/x", pidTuningTf, 0.01f, 0, 100, "%.2f", 1f)) {
+				sendFloat(0x18, pidTuningTf[0]);
+			}
 		}
 		imgui.end();
 
@@ -217,6 +236,11 @@ public class ConnectionManager {
 
 			// send the initial configuration parameters
 			sendCommand(new byte[] { COMMAND_SET_RES, (byte) sensorDegreeResolutions[currentSelectedSensorDegreeResolution[0]] });
+			sendFloat(0x15, pidTuningP[0]);
+			sendFloat(0x16, pidTuningI[0]);
+			sendFloat(0x17, pidTuningD[0]);
+			sendFloat(0x18, pidTuningTf[0]);
+
 		} else {
 			System.err.println("[ConnectionManager] Did not succeed in opening the connection!");
 		}
@@ -257,9 +281,10 @@ public class ConnectionManager {
 		}
 	}
 
-	private void sendSpeedCommand(boolean leftMotor, float speed) {
-		int bits = Float.floatToIntBits(speed);
-		sendCommand((byte) (leftMotor ? 0x10 : 0x11), (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff), (byte) (bits & 0xff));
+	private void sendFloat(int command, float value) {
+		int bits = Float.floatToIntBits(value);
+		sendCommand((byte) command, (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff),
+				(byte) (bits & 0xff));
 	}
 
 	public void dispose() {

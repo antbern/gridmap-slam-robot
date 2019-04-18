@@ -38,6 +38,7 @@ public class Observation {
 		public double angle, distance;
 		public boolean wasHit;
 
+		/** Constructs a new measurement based on the given angle and distance in robot's local coordinate frame */
 		public Measurement(double angle, double distance, boolean wasHit) {
 			this.angle = angle;
 			this.distance = distance;
@@ -50,8 +51,15 @@ public class Observation {
 			float dy = y - p.y;
 			float a = MathUtil.atan2(dy, dx);
 
-			this.distance = (float) Math.sqrt(dx * dx + dy * dy);
+			this.distance = Math.sqrt(dx * dx + dy * dy);
 			this.angle = a - p.theta;
+			this.wasHit = wasHit;
+		}
+
+		/** Constructs a new measurement based on coordinates given i robot's local coordinate frame */
+		public Measurement(double x, double y, boolean wasHit, int dummy) {
+			this.angle = MathUtil.atan2(y, x);
+			this.distance = Math.sqrt(x * x + y * y);
 			this.wasHit = wasHit;
 		}
 
