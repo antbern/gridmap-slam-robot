@@ -38,11 +38,16 @@ public class Observation {
 		public double angle, distance;
 		public boolean wasHit;
 
+		public double localX, localY;
+
 		/** Constructs a new measurement based on the given angle and distance in robot's local coordinate frame */
 		public Measurement(double angle, double distance, boolean wasHit) {
 			this.angle = angle;
 			this.distance = distance;
 			this.wasHit = wasHit;
+
+			this.localX = distance * MathUtil.cos(angle);
+			this.localY = distance * MathUtil.sin(angle);
 		}
 
 		/** Constructs a new measurement based on a given pose and world coordinates of end point */
@@ -54,6 +59,10 @@ public class Observation {
 			this.distance = Math.sqrt(dx * dx + dy * dy);
 			this.angle = a - p.theta;
 			this.wasHit = wasHit;
+
+			// TODO: Probably not correct ^^
+			this.localX = dx;
+			this.localY = dy;
 		}
 
 		/** Constructs a new measurement based on coordinates given i robot's local coordinate frame */
@@ -61,14 +70,9 @@ public class Observation {
 			this.angle = MathUtil.atan2(y, x);
 			this.distance = Math.sqrt(x * x + y * y);
 			this.wasHit = wasHit;
-		}
 
-		public float getEndPointX(Pose pose) {
-			return (float) (pose.x + distance * MathUtil.cos(angle + pose.theta));
-		}
-
-		public float getEndPointY(Pose pose) {
-			return (float) (pose.y + distance * MathUtil.sin(angle + pose.theta));
+			this.localX = x;
+			this.localY = y;
 		}
 
 	}

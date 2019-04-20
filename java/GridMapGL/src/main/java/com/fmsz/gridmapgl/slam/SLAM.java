@@ -90,7 +90,9 @@ public class SLAM {
 
 			// calculate the weight of this particle as p(z|x,m)
 			gridMap.computeLikelihoodMap(p.m);
-			// p.pose = gridMap.findBestPose(p.m, z, p.pose);
+			
+			// optimize pose position to maximize measurement likelihood
+			p.pose = gridMap.findBestPose(p.m, z, p.pose);
 
 			p.weight = gridMap.probabilityOf(p.m, z, p.pose);
 			weightSum += p.weight;

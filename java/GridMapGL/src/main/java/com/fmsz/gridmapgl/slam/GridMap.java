@@ -22,14 +22,15 @@ import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
 import com.fmsz.gridmapgl.math.MathUtil;
+import com.fmsz.gridmapgl.math.Transform;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
 
 import glm_.vec2.Vec2;
 import glm_.vec2.Vec2i;
 
 /**
- * A data class for storing information about multiple grid maps with the same physical size and resolution. Also contains a lot of static
- * functions for manipulating the map in different ways.
+ * A data class for storing information about multiple grid maps with the same physical size and resolution. Also
+ * contains a lot of static functions for manipulating the map in different ways.
  * 
  * Possible new name "GridMapManager"
  */
@@ -86,8 +87,8 @@ public class GridMap {
 	}
 
 	/**
-	 * Creates a new GridMapData object by copying the data from {@code other}. If {@code other} is {@code null}, a map with default values
-	 * is created.
+	 * Creates a new GridMapData object by copying the data from {@code other}. If {@code other} is {@code null}, a map with
+	 * default values is created.
 	 */
 	public GridMapData createMapData(GridMapData other) {
 		GridMapData map = new GridMapData();
@@ -157,20 +158,30 @@ public class GridMap {
 
 	/** Processes a complete Observation packet and integrates the measurements into this map */
 	public void integrateObservation(GridMapData map, Observation obs, Pose p) {
-		for (Measurement m : obs.getMeasurements())
-			applyMeasurement(map, m, p);
+		// pre-compute transform from local to world coordinates for pose
+		Transform localToWorld = Transform.fromRobotToWorld(p);
+
+		// where the measurements originate from in grid coordinates
+		float startX = (float) ((localToWorld.transformX(0, 0) - position.x) / resolution);
+		float startY = (float) ((localToWorld.transformY(0, 0) - position.y) / resolution);
+
+		// apply all measurements to the map
+		for (Measurement m : obs.getMeasurements()) {
+
+			// where this measurement ends in grid coordinates
+			float endX = (float) ((localToWorld.transformX(m.localX, m.localY) - position.x) / resolution);
+			float endY = (float) ((localToWorld.transformY(m.localX, m.localY) - position.y) / resolution);
+
+			applyMeasurement(map, startX, startY, endX, endY, (float) m.distance / resolution, m.wasHit);
+
+		}
 	}
 
-	/** Updates this GridMap with one measurement */
-	public void applyMeasurement(GridMapData map, Measurement m, Pose p) {
-		// calculate start and end points in GRID coordinates (has to be done since the ray iterator works in grid coordinates)
-		float startX = ((p.x - position.x) / resolution);
-		float startY = ((p.y - position.y) / resolution);
-		float endX = (m.getEndPointX(p) - position.x) / resolution;
-		float endY = (m.getEndPointY(p) - position.y) / resolution;
+	/** Updates this GridMap with one measurement. All parameters are given in GRID-coordinates. */
+	public void applyMeasurement(GridMapData map, float startX, float startY, float endX, float endY, float measuredDistance, boolean wasHit) {
 
 		// calculate the measured distance (in grid coordinates)
-		float measuredDistance = (float) m.distance / resolution;
+		// float measuredDistance = (float) Math.sqrt(startX * startX + endX * endY);
 
 		// stores the deltas in x and y direction
 		float dX, dY, distance;// , distanceSq;
@@ -180,22 +191,23 @@ public class GridMap {
 		// float maxDistSq = (measuredDistance + hitTolerance / 2) * (measuredDistance + hitTolerance / 2);
 		// float minDistSq = (measuredDistance - hitTolerance / 2) * (measuredDistance - hitTolerance / 2);
 
-		// initialize the RayIterator, the 2 is to give the sensor model the possibility to act correctly for cells "behind" the end point
+		// initialize the RayIterator, the 2 is to give the sensor model the possibility to act correctly for cells "behind" the
+		// end point
 		// and should be >= the parameter to inverseSensorModel below. Higher values gives "thicker" walls
 		rayIterator.init(startX + 0.5f, startY + 0.5f, endX + 0.5f, endY + 0.5f, 2);
 		while (rayIterator.hasNext()) {
 			Vec2i cell = rayIterator.next();
 
-			// calculate the distance to the center of the visited cell
+			// calculate the distance from the start to the center of this visited cell
 			dX = startX - (cell.x + 0.5f);
 			dY = startY - (cell.y + 0.5f);
 			distance = (float) Math.sqrt(dX * dX + dY * dY);
 			// distanceSq = dX * dX + dY * dY;
 
 			// integrate the measurement to each visited cell, according to the inverse sensor model
-			// the 2 is used as a "threshold", defining an interval where the cell should be considered occupied based on the measurement
-			map.logData[cell.x + cell.y * gridSize.x] += Util
-					.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, m.wasHit, 2));
+			// the 2 is used as a "threshold", defining an interval where the cell should be considered occupied based on the
+			// measurement
+			map.logData[cell.x + cell.y * gridSize.x] += Util.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, wasHit, 2));
 
 			// map.logData[cell.x + cell.y * gridSize.x] += Util
 			// .logOdds(SensorModel.inverseSensorModelSq(distanceSq, measuredDistanceSq, m.wasHit, maxDistSq, minDistSq));
@@ -227,10 +239,8 @@ public class GridMap {
 	/**
 	 * Computes the probability of the observation given the map and the pose: p(z | m, x)
 	 * 
-	 * @param obs
-	 *            the Observation, z
-	 * @param p
-	 *            the Pose, x
+	 * @param obs the Observation, z
+	 * @param p the Pose, x
 	 * @return p(z | m, x)
 	 */
 	private double zHit = 0.8, zRandom = 1 - zHit;
@@ -238,23 +248,20 @@ public class GridMap {
 	public double probabilityOf(GridMapData map, Observation obs, Pose p) {
 		double product = 1;
 
+		// create transform from robot coordinates to world coordinates
+		Transform robotToWorld = Transform.fromRobotToWorld(p);
+
 		for (Measurement m : obs.getMeasurements()) {
 			// only care about measurements that hit something
 			if (!m.wasHit)
 				continue;
 
 			// look up the probability of the end point being occupied and multiply by the product of the others
-			int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
-			int gridY = (int) ((m.getEndPointY(p) - position.y) / resolution);
+			int gridX = (int) ((robotToWorld.transformX(m.localX, m.localY) - position.x) / resolution);
+			int gridY = (int) ((robotToWorld.transformY(m.localX, m.localY) - position.y) / resolution);
 
 			if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.x || gridY >= gridSize.y)) {
 				double val = map.likelihoodData[gridX + gridY * gridSize.x];
-				/*
-				if (val == 0.0f) {
-					System.out.println("Zero @ " + gridX + ", " + gridY);
-					rays.add(new Vec2i(gridX, gridY));
-				}
-				*/
 
 				// if (!m.wasHit)
 				// val = 1 - val;
@@ -301,8 +308,8 @@ public class GridMap {
 		double maxProb = 0;
 		Pose currentPose = new Pose(startPose);
 
-		float xSpan = 0.15f, ySpan = 0.15f, thetaSpan = (float) (15 * MathUtil.DEG_TO_RAD);
-		float transStep = 0.05f, thetaStep = thetaSpan / 5;
+		float xSpan = 0.20f, ySpan = 0.20f, thetaSpan = (float) (15 * MathUtil.DEG_TO_RAD);
+		float transStep = 0.04f, thetaStep = thetaSpan / 5;
 
 		// test all combinations
 		for (float dx = -xSpan; dx < xSpan; dx += transStep) {
@@ -345,8 +352,7 @@ public class GridMap {
 		}
 
 		for (Vec2i v : rays) {
-			rend.rect(v.x * resolution + position.x, v.y * resolution + position.y, resolution, resolution,
-					Color.colorToFloatBits(1, 0, 0, 1));
+			rend.rect(v.x * resolution + position.x, v.y * resolution + position.y, resolution, resolution, Color.colorToFloatBits(1, 0, 0, 1));
 		}
 
 		rend.end();
@@ -355,12 +361,10 @@ public class GridMap {
 			rend.begin(ShapeType.LINE);
 
 			for (x = 0; x <= gridSize.x; x++)
-				rend.line(x * resolution + position.x, 0.0f + position.y, x * resolution + position.x, gridSize.y * resolution + position.x,
-						Color.BLACK);
+				rend.line(x * resolution + position.x, 0.0f + position.y, x * resolution + position.x, gridSize.y * resolution + position.x, Color.BLACK);
 
 			for (y = 0; y <= gridSize.y; y++)
-				rend.line(0.0f + position.x, y * resolution + position.y, gridSize.x * resolution + position.x, y * resolution + position.y,
-						Color.BLACK);
+				rend.line(0.0f + position.x, y * resolution + position.y, gridSize.x * resolution + position.x, y * resolution + position.y, Color.BLACK);
 
 			rend.end();
 		}

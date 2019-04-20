@@ -25,6 +25,7 @@ import com.fmsz.gridmapgl.graphics.Color;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer;
 import com.fmsz.gridmapgl.graphics.ShapeRenderer.ShapeType;
 import com.fmsz.gridmapgl.math.MathUtil;
+import com.fmsz.gridmapgl.math.Transform;
 import com.fmsz.gridmapgl.slam.GridMap.GridMapData;
 import com.fmsz.gridmapgl.slam.Observation;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
@@ -168,7 +169,12 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		}
 
+		long start = System.currentTimeMillis();
 		neff = slam.update(lastObservation, frame.u);
+		
+		long timeTaken = System.currentTimeMillis() - start;
+		
+		System.out.println("SLAM Update took " + timeTaken + "ms");
 
 		// only resample if supposed to
 		if (automaticResampling[0] && neff < slam.getParticles().size() / 2)
@@ -374,14 +380,17 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 		if (lastObservation != null && drawLastObservation[0]) {
 			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose
 					: strongestParticle.pose;
+			
+			Transform localToWorld = Transform.fromRobotToWorld(basePose);
+			
 			rend.begin(ShapeType.LINE);
 
 			for (Measurement m : lastObservation.getMeasurements()) {
-				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), (m.wasHit ? Color.GREEN : Color.RED));
+				rend.line(basePose.x, basePose.y, (float)localToWorld.transformX(m.localX, m.localY), (float)localToWorld.transformY(m.localX, m.localY), (m.wasHit ? Color.GREEN : Color.RED));
 			}
 
 			for (Measurement m : lastRawObservation.getMeasurements()) {
-				rend.line(basePose.x, basePose.y, m.getEndPointX(basePose), m.getEndPointY(basePose), Color.BLUE);
+				rend.line(basePose.x, basePose.y, (float)localToWorld.transformX(m.localX, m.localY), (float)localToWorld.transformY(m.localX, m.localY), Color.BLUE);
 			}
 
 			rend.end();
