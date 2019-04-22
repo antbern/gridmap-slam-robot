@@ -35,8 +35,9 @@ public class NetworkConnection implements IConnection {
 	@Override
 	public void doGUI(ImGui imgui) {
 		// very simple ui for now
-		imgui.inputText("Host", hostBuff, 0);
-		imgui.inputText("Port", portBuff, 0);
+		imgui.inputText("Host", hostBuff, 0, null, null);
+		imgui.inputText("Port", portBuff, 0, null, null);
+		
 	}
 
 	@Override

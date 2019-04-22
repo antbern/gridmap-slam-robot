@@ -56,7 +56,6 @@ public class PrimitiveRenderer {
 		shader = new Shader("res/shaders/basic.shader");
 		shader.bind();
 
-
 		// create a vertex buffer to hold our data (size in bytes)
 		vb = new VertexBuffer(maxVertices * layout.getStride());
 
@@ -79,7 +78,7 @@ public class PrimitiveRenderer {
 	}
 
 	public void vertex(Vec3 vertex) {
-		vertex(vertex.x, vertex.y, vertex.z);
+		vertex(vertex.getX(), vertex.getY(), vertex.getZ());
 	}
 
 	public void vertex(float x, float y, float z) {
@@ -98,7 +97,7 @@ public class PrimitiveRenderer {
 	}
 
 	public void color(Vec4 color) {
-		color(color.x, color.y, color.z, color.w);
+		color(color.getX(), color.getY(), color.getZ(), color.getW());
 	}
 
 	public void color(Color color) {

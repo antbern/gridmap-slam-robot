@@ -72,17 +72,17 @@ public class GridMap {
 		gridSize.put(Math.ceil(width / resolution), Math.ceil(height / resolution));
 
 		// calculate the "real" size of this grid map (potentially caused by Math.Ceil() above)
-		worldSize.put(gridSize.x * resolution, gridSize.y * resolution);
+		worldSize.put(gridSize.getX() * resolution, gridSize.getY() * resolution);
 
 		// create a temporary data array with the correct size
-		probData = new double[(int) (gridSize.x * gridSize.y)];
+		probData = new double[(int) (gridSize.getX() * gridSize.getY())];
 
 		// compute the likelihood kernel
 		double sigma = Math.sqrt(0.05 / resolution);
 		likelihoodKernel = Util.generateGaussianKernel(sigma, (int) Math.ceil(sigma * 3));
 
 		// create the correct ray iterator
-		rayIterator = new RayIterator(gridSize.x, gridSize.y);
+		rayIterator = new RayIterator(gridSize.getX(), gridSize.getY());
 
 	}
 
@@ -94,8 +94,8 @@ public class GridMap {
 		GridMapData map = new GridMapData();
 
 		// create data structure
-		map.logData = new double[(int) (gridSize.x * gridSize.y)];
-		map.likelihoodData = new double[(int) (gridSize.x * gridSize.y)];
+		map.logData = new double[(int) (gridSize.getX() * gridSize.getY())];
+		map.likelihoodData = new double[(int) (gridSize.getX() * gridSize.getY())];
 
 		// is this a copy operation or not?
 		if (other == null) {
@@ -119,18 +119,18 @@ public class GridMap {
 	}
 
 	public double getRawAt(GridMapData map, int x, int y) {
-		return map.logData[x + y * gridSize.x];
+		return map.logData[x + y * gridSize.getX()];
 	}
 
 	public double getProbAt(GridMapData map, int x, int y) {
-		return Util.invLogOdds(map.logData[x + y * gridSize.x]);
+		return Util.invLogOdds(map.logData[x + y * gridSize.getX()]);
 	}
 
 	public double getRawAt(GridMapData map, Vec2 point) {
 		tmp.put(point);
 		tmp.minusAssign(position);
 		tmp.divAssign(resolution);
-		return map.logData[tmp.x.intValue() + tmp.y.intValue() * gridSize.x];
+		return map.logData[tmp.getX().intValue() + tmp.getY().intValue() * gridSize.getX()];
 
 	}
 
@@ -138,7 +138,7 @@ public class GridMap {
 		tmp.put(point);
 		tmp.minusAssign(position);
 		tmp.divAssign(resolution);
-		return map.likelihoodData[tmp.x.intValue() + tmp.y.intValue() * gridSize.x];
+		return map.likelihoodData[tmp.getX().intValue() + tmp.getY().intValue() * gridSize.getX()];
 
 	}
 
@@ -153,7 +153,7 @@ public class GridMap {
 		tmp.minusAssign(position);
 		tmp.divAssign(resolution);
 
-		return !(tmp.x < 0 || tmp.y < 0 || tmp.x >= gridSize.x || tmp.y >= gridSize.y);
+		return !(tmp.getX() < 0 || tmp.getY() < 0 || tmp.getX() >= gridSize.getX() || tmp.getY() >= gridSize.getY());
 	}
 
 	/** Processes a complete Observation packet and integrates the measurements into this map */
@@ -162,15 +162,15 @@ public class GridMap {
 		Transform localToWorld = Transform.fromRobotToWorld(p);
 
 		// where the measurements originate from in grid coordinates
-		float startX = (float) ((localToWorld.transformX(0, 0) - position.x) / resolution);
-		float startY = (float) ((localToWorld.transformY(0, 0) - position.y) / resolution);
+		float startX = (float) ((localToWorld.transformX(0, 0) - position.getX()) / resolution);
+		float startY = (float) ((localToWorld.transformY(0, 0) - position.getY()) / resolution);
 
 		// apply all measurements to the map
 		for (Measurement m : obs.getMeasurements()) {
 
 			// where this measurement ends in grid coordinates
-			float endX = (float) ((localToWorld.transformX(m.localX, m.localY) - position.x) / resolution);
-			float endY = (float) ((localToWorld.transformY(m.localX, m.localY) - position.y) / resolution);
+			float endX = (float) ((localToWorld.transformX(m.localX, m.localY) - position.getX()) / resolution);
+			float endY = (float) ((localToWorld.transformY(m.localX, m.localY) - position.getY()) / resolution);
 
 			applyMeasurement(map, startX, startY, endX, endY, (float) m.distance / resolution, m.wasHit);
 
@@ -199,17 +199,17 @@ public class GridMap {
 			Vec2i cell = rayIterator.next();
 
 			// calculate the distance from the start to the center of this visited cell
-			dX = startX - (cell.x + 0.5f);
-			dY = startY - (cell.y + 0.5f);
+			dX = startX - (cell.getX() + 0.5f);
+			dY = startY - (cell.getY() + 0.5f);
 			distance = (float) Math.sqrt(dX * dX + dY * dY);
 			// distanceSq = dX * dX + dY * dY;
 
 			// integrate the measurement to each visited cell, according to the inverse sensor model
 			// the 2 is used as a "threshold", defining an interval where the cell should be considered occupied based on the
 			// measurement
-			map.logData[cell.x + cell.y * gridSize.x] += Util.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, wasHit, 2));
+			map.logData[cell.getX() + cell.getY() * gridSize.getX()] += Util.logOdds(SensorModel.inverseSensorModel(distance, measuredDistance, wasHit, 2));
 
-			// map.logData[cell.x + cell.y * gridSize.x] += Util
+			// map.logData[cell.getX() + cell.getY() * gridSize.getX()] += Util
 			// .logOdds(SensorModel.inverseSensorModelSq(distanceSq, measuredDistanceSq, m.wasHit, maxDistSq, minDistSq));
 		}
 	}
@@ -232,7 +232,7 @@ public class GridMap {
 		}
 
 		// performs the gaussian bluring to create the likelihood field
-		Util.doGaussianBlurdSeparable(this.probData, map.likelihoodData, gridSize.x, gridSize.y, likelihoodKernel);
+		Util.doGaussianBlurdSeparable(this.probData, map.likelihoodData, gridSize.getX(), gridSize.getY(), likelihoodKernel);
 
 	}
 
@@ -257,11 +257,11 @@ public class GridMap {
 				continue;
 
 			// look up the probability of the end point being occupied and multiply by the product of the others
-			int gridX = (int) ((robotToWorld.transformX(m.localX, m.localY) - position.x) / resolution);
-			int gridY = (int) ((robotToWorld.transformY(m.localX, m.localY) - position.y) / resolution);
+			int gridX = (int) ((robotToWorld.transformX(m.localX, m.localY) - position.getX()) / resolution);
+			int gridY = (int) ((robotToWorld.transformY(m.localX, m.localY) - position.getY()) / resolution);
 
-			if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.x || gridY >= gridSize.y)) {
-				double val = map.likelihoodData[gridX + gridY * gridSize.x];
+			if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.getX() || gridY >= gridSize.getY())) {
+				double val = map.likelihoodData[gridX + gridY * gridSize.getX()];
 
 				// if (!m.wasHit)
 				// val = 1 - val;
@@ -284,11 +284,11 @@ public class GridMap {
 	public double probabilityOf(GridMapData map, Measurement m, Pose p) {
 	
 		// look up the probability of the end point being occupied and multiply by the product of the others
-		int gridX = (int) ((m.getEndPointX(p) - position.x) / resolution);
-		int gridY = (int) ((m.getEndPointY(p) - position.y) / resolution);
+		int gridX = (int) ((m.getEndPointX(p) - position.getX()) / resolution);
+		int gridY = (int) ((m.getEndPointY(p) - position.getY()) / resolution);
 	
-		if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.x || gridY >= gridSize.y)) {
-			double val = map.likelihoodData[gridX + gridY * gridSize.x];
+		if (!(gridX < 0 || gridY < 0 || gridX >= gridSize.getX() || gridY >= gridSize.getY())) {
+			double val = map.likelihoodData[gridX + gridY * gridSize.getX()];
 			/*
 			if (val == 0.0f) {
 				System.out.println("Zero @ " + gridX + ", " + gridY);
@@ -337,8 +337,8 @@ public class GridMap {
 
 		float x, y, value;
 		for (int i = 0; i < map.logData.length; i++) {
-			x = i % gridSize.x;
-			y = i / gridSize.x;
+			x = i % gridSize.getX();
+			y = i / gridSize.getX();
 			// float r = Util.invLogOdds(data[i]);
 
 			// draw a rect for each grid cell, with the correct color
@@ -347,12 +347,12 @@ public class GridMap {
 			else
 				value = (float) (1.0f - Util.invLogOdds(map.logData[i]));
 
-			rend.rect(x * resolution + position.x, y * resolution + position.y, resolution, resolution, Util.getColorBitsGrayscale(value));
+			rend.rect(x * resolution + position.getX(), y * resolution + position.getY(), resolution, resolution, Util.getColorBitsGrayscale(value));
 
 		}
 
 		for (Vec2i v : rays) {
-			rend.rect(v.x * resolution + position.x, v.y * resolution + position.y, resolution, resolution, Color.colorToFloatBits(1, 0, 0, 1));
+			rend.rect(v.getX() * resolution + position.getX(), v.getY() * resolution + position.getY(), resolution, resolution, Color.colorToFloatBits(1, 0, 0, 1));
 		}
 
 		rend.end();
@@ -360,11 +360,11 @@ public class GridMap {
 		if (renderLines) {
 			rend.begin(ShapeType.LINE);
 
-			for (x = 0; x <= gridSize.x; x++)
-				rend.line(x * resolution + position.x, 0.0f + position.y, x * resolution + position.x, gridSize.y * resolution + position.x, Color.BLACK);
+			for (x = 0; x <= gridSize.getX(); x++)
+				rend.line(x * resolution + position.getX(), 0.0f + position.getY(), x * resolution + position.getX(), gridSize.getY() * resolution + position.getX(), Color.BLACK);
 
-			for (y = 0; y <= gridSize.y; y++)
-				rend.line(0.0f + position.x, y * resolution + position.y, gridSize.x * resolution + position.x, y * resolution + position.y, Color.BLACK);
+			for (y = 0; y <= gridSize.getY(); y++)
+				rend.line(0.0f + position.getX(), y * resolution + position.getY(), gridSize.getX() * resolution + position.getX(), y * resolution + position.getY(), Color.BLACK);
 
 			rend.end();
 		}
@@ -372,7 +372,7 @@ public class GridMap {
 		/*
 		
 		rend.begin(ShapeType.LINE);
-		Vec2 start = new Vec2((gridSize.x / 2 + 0.5f) * resolution + position.x, (gridSize.y / 2 + 0.5f) * resolution + position.y);
+		Vec2 start = new Vec2((gridSize.getX() / 2 + 0.5f) * resolution + position.getX(), (gridSize.getY() / 2 + 0.5f) * resolution + position.getY());
 		
 		for (Vec2 p : rays)
 			rend.line(start, p, Color.GREEN);

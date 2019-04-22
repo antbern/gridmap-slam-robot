@@ -22,13 +22,13 @@ import java.util.List;
 import glm_.vec2.Vec2;
 import glm_.vec4.Vec4;
 import imgui.Col;
-import imgui.FocusedFlags;
+import imgui.Dir;
+import imgui.FocusedFlag;
 import imgui.ImGui;
-import imgui.internal.Dir;
 
 /**
- * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial connection to the
- * correct port and with the correct speed settings
+ * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial
+ * connection to the correct port and with the correct speed settings
  * 
  * @author Anton
  *
@@ -127,7 +127,7 @@ public class ConnectionManager {
 
 			imgui.separator();
 
-			boolean controlsActive = imgui.isWindowFocused(FocusedFlags.ChildWindows);
+			boolean controlsActive = imgui.isWindowFocused(FocusedFlag.ChildWindows);
 
 			imgui.text("Status: %s", controlsActive ? "active" : "inactive");
 			if (controlsActive)
@@ -137,13 +137,14 @@ public class ConnectionManager {
 			// Up arrow
 			imgui.newLine();
 			imgui.sameLine(45);
-			imgui.arrowButton(11, Dir.Up, arrowPadding, 0);
+
+			imgui.arrowButtonEx("11", Dir.Up, arrowPadding, 0);
 			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
 				selectedDirection = Dir.Up;
 			}
 
 			// Left arrow
-			imgui.arrowButton(10, Dir.Left, arrowPadding, 0);
+			imgui.arrowButtonEx("10", Dir.Left, arrowPadding, 0);
 			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
 				selectedDirection = Dir.Left;
 			}
@@ -154,7 +155,7 @@ public class ConnectionManager {
 
 			// Right arrow
 			imgui.sameLine(82);
-			imgui.arrowButton(13, Dir.Right, arrowPadding, 0);
+			imgui.arrowButtonEx("13", Dir.Right, arrowPadding, 0);
 			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
 				selectedDirection = Dir.Right;
 			}
@@ -162,7 +163,7 @@ public class ConnectionManager {
 			// Down arrow
 			imgui.newLine();
 			imgui.sameLine(45);
-			imgui.arrowButton(12, Dir.Down, arrowPadding, 0);
+			imgui.arrowButtonEx("12", Dir.Down, arrowPadding, 0);
 			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
 				selectedDirection = Dir.Down;
 			}
@@ -171,7 +172,7 @@ public class ConnectionManager {
 				imgui.popStyleColor(1);
 
 			// speed select slider
-			imgui.dragFloat("Speed", selectedSpeed, 0.01f, 0.0f, 14.0f, "%.2f", 2f);
+			imgui.dragFloat("Speed", selectedSpeed, 0, 0.01f, 0.0f, 14.0f, "%.2f", 2f);
 
 			// only send to robot if there was a change
 			if (selectedDirection != lastDirection) {
@@ -208,16 +209,16 @@ public class ConnectionManager {
 			}
 
 			// PID tuning sliders
-			if (imgui.dragFloat("Kp", pidTuningP, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Kp", pidTuningP, 0, 0.001f, 0, 10, "%.4f", 1f)) {
 				sendFloat(0x15, pidTuningP[0]);
 			}
-			if (imgui.dragFloat("Ki", pidTuningI, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Ki", pidTuningI, 0, 0.001f, 0, 10, "%.4f", 1f)) {
 				sendFloat(0x16, pidTuningI[0]);
 			}
-			if (imgui.dragFloat("Kd", pidTuningD, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Kd", pidTuningD, 0, 0.001f, 0, 10, "%.4f", 1f)) {
 				sendFloat(0x17, pidTuningD[0]);
 			}
-			if (imgui.dragFloat("Tf = 1/x", pidTuningTf, 0.01f, 0, 100, "%.2f", 1f)) {
+			if (imgui.dragFloat("Tf = 1/x", pidTuningTf, 0, 0.01f, 0, 100, "%.2f", 1f)) {
 				sendFloat(0x18, pidTuningTf[0]);
 			}
 		}
@@ -283,8 +284,7 @@ public class ConnectionManager {
 
 	private void sendFloat(int command, float value) {
 		int bits = Float.floatToIntBits(value);
-		sendCommand((byte) command, (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff),
-				(byte) (bits & 0xff));
+		sendCommand((byte) command, (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff), (byte) (bits & 0xff));
 	}
 
 	public void dispose() {

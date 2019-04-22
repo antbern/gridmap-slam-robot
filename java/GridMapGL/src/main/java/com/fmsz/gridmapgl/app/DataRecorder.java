@@ -36,8 +36,8 @@ import com.fmsz.gridmapgl.slam.TimeFrame;
 
 import glm_.vec2.Vec2;
 import imgui.ImGui;
-import imgui.InputTextFlags;
-import imgui.internal.ButtonFlags;
+import imgui.InputTextFlag;
+import imgui.internal.ButtonFlag;
 
 /**
  * A class for recording incoming observation and odometry information. Also does playback and saving/loading from file
@@ -99,9 +99,6 @@ public class DataRecorder implements IDataSubscriber {
 	public void doGUI(ImGui imgui) {
 		if (imgui.begin("Recorder", null, 0)) {
 			// select recording slot?
-			/*if(imgui.selectable("Hello", false, 0, new Vec2())) {
-				System.out.println("Click+");
-			}*/
 
 			/*
 			if (imgui.inputText("Filename:", fileNameBuffer, 0)) {
@@ -145,20 +142,19 @@ public class DataRecorder implements IDataSubscriber {
 
 			if (imgui.beginPopup("filename", 0)) {
 
-				if (imgui.inputText("Filename:", fileNameBuffer, InputTextFlags.EnterReturnsTrue.getI())) {
+				if (imgui.inputText("Filename:", fileNameBuffer, InputTextFlag.EnterReturnsTrue.i, (data) -> 0, null)) {
 					String filename = new String(fileNameBuffer).trim();
 
 					availableFileNames.add(filename);
 					availableFilePaths.add(Paths.get(rootDirectory, filename));
 					currentSelectedFileIndex[0] = availableFileNames.size() - 1;
 					currentSelectedFile = availableFilePaths.get(currentSelectedFileIndex[0] - 1);
-					
+
 					imgui.closeCurrentPopup();
 				}
 
 				imgui.endPopup();
 			}
-			
 
 			if (imgui.button("Save", new Vec2())) {
 				save(currentSelectedFile);
@@ -168,7 +164,7 @@ public class DataRecorder implements IDataSubscriber {
 				load(currentSelectedFile);
 			}
 			imgui.sameLine(0);
-			if(imgui.button("Clear", new Vec2())) {
+			if (imgui.button("Clear", new Vec2())) {
 				currentTime = 0;
 				frameCounter = 0;
 				frames.clear();
@@ -201,7 +197,7 @@ public class DataRecorder implements IDataSubscriber {
 			// record?
 			if (modeSelectArray[0] == 0) { // record
 				// test setup, Start, Pause, Stop
-				if (imgui.buttonEx("Start", new Vec2(), (running ? ButtonFlags.Disabled.getI() : 0))) {
+				if (imgui.buttonEx("Start", new Vec2(), (running ? ButtonFlag.Disabled.getI() : 0))) {
 					// begin recording
 					beginRecording();
 				}
@@ -214,11 +210,11 @@ public class DataRecorder implements IDataSubscriber {
 				}
 				*/
 				imgui.sameLine(0);
-				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlags.Disabled.getI()))) {
+				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					endRecording();
 				}
 			} else { // replay
-				if (imgui.buttonEx("Start", new Vec2(), (running ? ButtonFlags.Disabled.getI() : 0))) {
+				if (imgui.buttonEx("Start", new Vec2(), (running ? ButtonFlag.Disabled.getI() : 0))) {
 					// begin replay
 					beginPlayback();
 				}
@@ -230,71 +226,17 @@ public class DataRecorder implements IDataSubscriber {
 					paused = !paused;
 				}*/
 				imgui.sameLine(0);
-				if (imgui.buttonEx("Step", new Vec2(), (running ? 0 : ButtonFlags.Disabled.getI()))) {
+				if (imgui.buttonEx("Step", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					forceNextPlayback();
 				}
 				imgui.sameLine(0);
-				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlags.Disabled.getI()))) {
+				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					endPlayback();
 				}
 
 				if (frameCounter < frames.size())
 					imgui.text("Next Frame: %.2f", frames.get(frameCounter).timeStamp);
 			}
-
-			/*
-			switch (currentState) {
-			case IDLE:
-				// imgui.pushStyleColor(Col.Button, new Vec4(1, 0, 0, 1));
-				// imgui.pushStyleColor(Col.ButtonActive, new Vec4(0, 1, 0, 1));
-			
-				// imgui.popStyleColor(2);
-				imgui.newLine();
-			
-				if (imgui.buttonEx((!started ? "Start" : "Stop"), btnSize, ButtonFlags.FlattenChildren.getI())) {
-					started = !started;
-					System.out.println("Click!");
-				}
-				imgui.sameLine(0);
-				imgui.checkbox("Pause", pausArray);
-			
-				imgui.newLine();
-			
-				// begin recording
-				if (imgui.button("Start Recording", new Vec2())) {
-					currentState = State.RECORD;
-					currentTime = 0;
-					frames.clear();
-				}
-			
-				// begin playback?
-				if (imgui.button("Start Replay", new Vec2())) {
-					currentState = State.REPLAY;
-					currentTime = 0;
-					frameCounter = 0;
-				}
-			
-				// save and load stuff goes here (only available in idle mode)
-			
-				break;
-			case RECORD:
-				// pause recording
-			
-				// stop recording
-				if (imgui.button("Stop Recording", new Vec2())) {
-					currentState = State.IDLE;
-				}
-			
-				break;
-			case REPLAY:
-				// select playback speed, allow to "step" them one at a time, do it "realtime" or quickly
-			
-				// stop replay
-			
-				break;
-			}
-			*/
-
 		}
 		// end the window
 		imgui.end();

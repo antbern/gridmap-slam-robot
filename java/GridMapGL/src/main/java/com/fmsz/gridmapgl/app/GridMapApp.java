@@ -157,7 +157,8 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 			// double x_a = x_p * MathUtil.cos(delta_theta) - y_p * MathUtil.sin(delta_theta) + delta_x;
 			// double y_a = x_p * MathUtil.sin(delta_theta) + y_p * MathUtil.cos(delta_theta);
 
-			// calculate new coordinates for this measurement (in local coordinate frame) by adding rotation and translation component
+			// calculate new coordinates for this measurement (in local coordinate frame) by adding rotation and translation
+			// component
 			double x_a = m.distance * MathUtil.cos(m.angle + delta_theta) + delta_x;
 			double y_a = m.distance * MathUtil.sin(m.angle + delta_theta);
 
@@ -171,16 +172,17 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		long start = System.currentTimeMillis();
 		neff = slam.update(lastObservation, frame.u);
-		
+
 		long timeTaken = System.currentTimeMillis() - start;
-		
+
 		System.out.println("SLAM Update took " + timeTaken + "ms");
 
 		// only resample if supposed to
 		if (automaticResampling[0] && neff < slam.getParticles().size() / 2)
 			slam.resample();
 
-		// note that the strongest particle may no longer be correct as resampling has happened and the particle may no longer be active!
+		// note that the strongest particle may no longer be correct as resampling has happened and the particle may no longer
+		// be active!
 		strongestParticle = slam.getStrongestParticle();
 
 		currentCombinedPose = slam.getWeightedPose();
@@ -257,7 +259,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 						break;
 
 					case MAP_SPECIFIC:
-						imgui.sliderInt("Particle", selectedParticle, 0, slam.getParticles().size() - 1, "%.0f");
+						imgui.sliderInt("Particle", selectedParticle, 0, 0, slam.getParticles().size() - 1, "%.0f");
 						break;
 
 					case MAP_COMBINED:
@@ -378,19 +380,18 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		// draw the last observation
 		if (lastObservation != null && drawLastObservation[0]) {
-			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose
-					: strongestParticle.pose;
-			
+			Pose basePose = mapDrawSelectArray[0] == MAP_SPECIFIC ? slam.getParticles().get(selectedParticle[0]).pose : strongestParticle.pose;
+
 			Transform localToWorld = Transform.fromRobotToWorld(basePose);
-			
+
 			rend.begin(ShapeType.LINE);
 
 			for (Measurement m : lastObservation.getMeasurements()) {
-				rend.line(basePose.x, basePose.y, (float)localToWorld.transformX(m.localX, m.localY), (float)localToWorld.transformY(m.localX, m.localY), (m.wasHit ? Color.GREEN : Color.RED));
+				rend.line(basePose.x, basePose.y, (float) localToWorld.transformX(m.localX, m.localY), (float) localToWorld.transformY(m.localX, m.localY), (m.wasHit ? Color.GREEN : Color.RED));
 			}
 
 			for (Measurement m : lastRawObservation.getMeasurements()) {
-				rend.line(basePose.x, basePose.y, (float)localToWorld.transformX(m.localX, m.localY), (float)localToWorld.transformY(m.localX, m.localY), Color.BLUE);
+				rend.line(basePose.x, basePose.y, (float) localToWorld.transformX(m.localX, m.localY), (float) localToWorld.transformY(m.localX, m.localY), Color.BLUE);
 			}
 
 			rend.end();

@@ -36,7 +36,7 @@ public class ObjectSerializer {
 	public static void writeOdometry(DataOutputStream dos, Odometry o) throws IOException {
 		// write values
 		dos.writeDouble(o.dCenter);
-		dos.writeDouble(o.dTheta);		
+		dos.writeDouble(o.dTheta);
 	}
 
 	public static Odometry readOdometry(DataInputStream dis) throws IOException {
@@ -86,11 +86,11 @@ public class ObjectSerializer {
 	public static void writeGridMap(DataOutputStream dos, GridMap map) throws IOException {
 		// width, height, resolution, position, logData
 
-		dos.writeFloat(map.getWorldSize().x); // map width (meters)
-		dos.writeFloat(map.getWorldSize().y); // map height (meters)
+		dos.writeFloat(map.getWorldSize().getX()); // map width (meters)
+		dos.writeFloat(map.getWorldSize().getY()); // map height (meters)
 		dos.writeFloat(map.getResolution()); // resolution (meters)
-		dos.writeFloat(map.getPosition().x); // global map position x
-		dos.writeFloat(map.getPosition().y); // global map position y
+		dos.writeFloat(map.getPosition().getX()); // global map position x
+		dos.writeFloat(map.getPosition().getY()); // global map position y
 	}
 
 	public static GridMap readGridMap(DataInputStream dis) throws IOException {

@@ -82,7 +82,7 @@ public class Camera {
 
 		// recalculate the size of the viewport here
 		viewportWidth = 10f;
-		viewportHeight = viewportWidth * currentScreenSize.y / currentScreenSize.x;
+		viewportHeight = viewportWidth * currentScreenSize.getY() / currentScreenSize.getX();
 
 		// need to recalculate the projection matrix here...
 
@@ -97,7 +97,7 @@ public class Camera {
 
 	public Vec2 unproject(Vec2 screenCoords) {
 
-		screenCoords.put(screenCoords.x / currentScreenSize.x * viewportWidth * zoom, (currentScreenSize.y - screenCoords.y - 1) / currentScreenSize.y * viewportHeight * zoom);
+		screenCoords.put(screenCoords.getX() / currentScreenSize.getX() * viewportWidth * zoom, (currentScreenSize.getY() - screenCoords.getY() - 1) / currentScreenSize.getY() * viewportHeight * zoom);
 
 		// adjust for the viewport size
 		screenCoords.minusAssign(viewportWidth * zoom / 2, viewportHeight * zoom / 2);
@@ -120,11 +120,12 @@ public class Camera {
 		// recreate the view matrix
 		//@formatter:off
 		view.put(
-			1,  0,  0,   position.x,
-			0,  1,	0,   position.y, 
+			1,  0,  0,   position.getX(),
+			0,  1,	0,   position.getY(), 
 			0,  0,  1,   0,
 			0,  0,  0,   1				
-		).transposeAssign();
+		);
+		view.transposeAssign();
 		//@formatter:on
 		// calculate the combined transformation
 		combined.put(projection);

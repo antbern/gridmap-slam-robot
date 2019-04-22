@@ -15,32 +15,35 @@
  *******************************************************************************/
 package com.fmsz.gridmapgl.core;
 
+import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
+import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
+import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
+import static org.lwjgl.glfw.GLFW.glfwGetTime;
+import static org.lwjgl.opengl.GL11.*;
+
+import java.io.IOException;
+
+import com.fmsz.gridmapgl.app.GridMapApp;
+import com.fmsz.gridmapgl.app.IApplication;
+import com.fmsz.gridmapgl.graphics.Camera;
+
 import glm_.vec2.Vec2;
 import glm_.vec2.Vec2d;
 import glm_.vec2.Vec2i;
 import glm_.vec4.Vec4;
 import imgui.Cond;
 import imgui.Context;
-import imgui.ContextKt;
 import imgui.IO;
 import imgui.ImGui;
-import imgui.impl.LwjglGL3;
+import imgui.ImguiKt;
+import imgui.impl.LwjglGlfw;
+import imgui.impl.LwjglGlfw.GlfwClientApi;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function3;
-
-import org.lwjgl.opengl.GL;
-import com.fmsz.gridmapgl.app.GridMapApp;
-import com.fmsz.gridmapgl.app.IApplication;
-import com.fmsz.gridmapgl.graphics.Camera;
-
 import uno.glfw.GlfwWindow;
-
-import static org.lwjgl.opengl.GL11.*;
-
-import java.io.IOException;
-
-import static org.lwjgl.glfw.GLFW.*;
+import uno.glfw.VSync;
+import uno.glfw.windowHint.Profile;
 
 public class Main2 {
 
@@ -119,8 +122,8 @@ public class Main2 {
 	// The window handle
 	private GlfwWindow window;
 	private uno.glfw.glfw glfw = uno.glfw.glfw.INSTANCE;
-	private uno.glfw.windowHint windowHint = uno.glfw.windowHint.INSTANCE;
-	private LwjglGL3 lwjglGL3 = LwjglGL3.INSTANCE;
+
+	private LwjglGlfw lwjglGlfw;
 	private ImGui igui = ImGui.INSTANCE;
 	private IO io;
 	private Context ctx;
@@ -133,16 +136,13 @@ public class Main2 {
 	private boolean mouseDragged = false;
 
 	// keep track of the current window size (in pixels)
-	private Vec2 currentWindowSize = new Vec2();
+	private Vec2 currentWindowSize = new Vec2(1280, 720);
 
 	// the application
 	private IApplication app = null;
 
 	// the camera and stuff
 	private Camera cam;
-
-	// variable to hold whether or not the loop is executed for the first time
-	boolean first = true;
 
 	// keep track of the last update time
 	private double lastTime;
@@ -155,8 +155,10 @@ public class Main2 {
 		init();
 
 		// call the main loop until window is closed
-		while (window.isOpen())
+		window.loop((MemoryStack) -> {
 			loop();
+			return Unit.INSTANCE;
+		});
 
 		// cleanup
 		dispose();
@@ -164,68 +166,41 @@ public class Main2 {
 	}
 
 	private void init() {
+		////// PLATFORM SETUP //////
 
-		glfw.init();
-		windowHint.getContext().setVersion("3.2");
-		windowHint.setProfile("core");
+		// initialize glfw
+		glfw.init("3.3", Profile.core, true);
 
-		currentWindowSize.put(1280, 720);
-		window = new GlfwWindow(currentWindowSize.x.intValue(), currentWindowSize.y.intValue(), "GridMapGL using ImGUI");
+		// create GLFW window
+		window = new GlfwWindow(1280, 720, "GridMapGL using ImGUI", 0, new Vec2i(Integer.MIN_VALUE), true);
+		window.init(true);
 
-		window.makeContextCurrent();
-		glfw.setSwapInterval(1); // Enable vsync
-		window.show();
+		// Enable vsync
+		glfw.setSwapInterval(VSync.ON);
 
-		/*
-		 * This line is critical for LWJGL's interoperation with GLFW's OpenGL context, or any context that is managed
-		 * externally. LWJGL detects the context that is current in the current thread, creates the GLCapabilities instance and
-		 * makes the OpenGL bindings available for use.
-		 */
-		GL.createCapabilities();
-
-		// Setup ImGui binding
-		// setGlslVersion(330); // set here your desidered glsl version
+		// create context
 		ctx = new Context(null);
-		lwjglGL3.init(window, true);
 
 		// set correct .ini file
 		io = igui.getIo();
-		io.setIniFilename("config/imgui.ini");
+		// TODO: take this back once bug has been fixed!
+		// io.setIniFilename("res/config/imgui.ini");
 
 		// Setup style
-		igui.styleColorsDark(null);
+		igui.styleColorsDark();
 
-		// imgui.styleColorsClassic(null);
+		// Setup Platform/Renderer bindings
+		lwjglGlfw = new LwjglGlfw(window, true, GlfwClientApi.OpenGL, null);
 
-		// Load Fonts
-		/*
-		 * - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use
-		 * pushFont()/popFont() to select them. - addFontFromFileTTF() will return the Font so you can store it if you need to
-		 * select the font among multiple. - If the file cannot be loaded, the function will return null. Please handle those
-		 * errors in your application (e.g. use an assertion, or display an error and quit). - The fonts will be rasterized at a
-		 * given size (w/ oversampling) and stored into a texture when calling FontAtlas.build()/getTexDataAsXXXX(), which
-		 * ImGui_ImplXXXX_NewFrame below will call. - Read 'misc/fonts/README.txt' for more instructions and details. - Remember
-		 * that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-		 */
-		// ImGuiIO& io = ImGui::GetIO();
-		// io.Fonts->AddFontDefault();
-		// io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-		// io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-		// io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-		// io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-		// Font font = io.getFonts().addFontFromFileTTF("misc/fonts/ArialUni.ttf", 18f, new FontConfig(),
-		// io.getFonts().getGlyphRangesJapanese());
-		// assert (font != null);
+		/////// APPLICATION SPECIFIC SETUP ////////
 
-		// more initializations
-
-		// the view camera
+		// create the view camera
 		cam = new Camera();
 
 		// set up input handling
-		window.setCursorPosCallback(new Function1<Vec2d, Unit>() {
+		window.setCursorPosCallback(new Function1<Vec2, Unit>() {
 			@Override
-			public Unit invoke(Vec2d pos) {
+			public Unit invoke(Vec2 pos) {
 				// if imgui wants the mouse, let it have it :)
 				if (io.getWantCaptureMouse())
 					return null;
@@ -293,7 +268,7 @@ public class Main2 {
 				if (io.getWantCaptureMouse())
 					return null;
 
-				cam.zoom(currentMousePosition, amount.y.floatValue());
+				cam.zoom(currentMousePosition, amount.getY().floatValue());
 				return null;
 			}
 		});
@@ -320,42 +295,13 @@ public class Main2 {
 
 	private void loop() {
 
-		/*
-		 * You can read the IO.wantCaptureMouse, IO.wantCaptureKeyboard flags to tell if dear imgui wants to use your inputs. -
-		 * when IO.wantCaptureMouse is true, do not dispatch mouse input data to your main application. - when
-		 * Io.wantCaptureKeyboard is true, do not dispatch keyboard input data to your main application. Generally you may
-		 * always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-		 */
-		glfw.pollEvents();
-		lwjglGL3.newFrame();
+		lwjglGlfw.newFrame();
+		igui.newFrame();
 
-		// really bad workaround for ImGUI:s bad file loading (which loads from classpath, and saves outside the classpath...)
-		// OBS! This has to be done AFTER the first lwjglGL3.newFrame() since it is responsible for doing the actual loadings
-		if (first) {
-			first = false;
-			io.setIniFilename("res/config/imgui.ini");
-		}
-
-		// some default behavior
+		// some default behavior (TODO: probablit not needed anymore)
 		igui.setWindowCollapsed(false, Cond.FirstUseEver);
 		igui.setWindowSize(new Vec2(0, 0), Cond.FirstUseEver);
 		igui.setNextWindowCollapsed(false, Cond.FirstUseEver);
-		/*
-		 * imgui.text("Hello, world!"); // Display some text (you can use a format string too) imgui.sliderFloat("float", f, 0f,
-		 * 1f, "%.3f", 1f); // Edit 1 float using a slider from 0.0f to 1.0f imgui.colorEdit3("clear color", clearColor, 0); //
-		 * Edit 3 floats representing a color imgui.checkbox("Demo Window", showDemo); // Edit bools storing our windows
-		 * open/close state imgui.checkbox("Another Window", showAnotherWindow);
-		 */
-		/*
-		 * if (imgui.button("Button", new Vec2())) // Buttons return true when clicked (NB: most widgets return true when
-		 * edited/activated) counter[0]++;
-		 * 
-		 * imgui.sameLine(0f, -1f); imgui.text("counter = %d", counter[0]);
-		 */
-
-		// imgui.begin("Test", new boolean[] {true}, 0);
-
-		// imgui.end();
 
 		// Rendering
 		gln.GlnKt.glViewport(window.getFramebufferSize());
@@ -370,22 +316,31 @@ public class Main2 {
 		double currentTime = glfwGetTime();
 
 		float delta = (float) (currentTime - lastTime);
+
+		// let the app do its thing: update, rendering etc.
 		app.render(delta, cam);
 
 		float updateTime = (float) (glfwGetTime() - currentTime);
 
 		lastTime = currentTime;
 
-		// show some debug info in the "Debug" Window:
-		igui.text("App Delta:  %.2f ms (%.2f FPS)", delta * 1000, 1.0f / delta);
-		igui.text("App Update: %.2f ms (%.2f FPS)", updateTime * 1000, 1.0f / updateTime);
-		igui.text("Mouse: [%.2f, %.2f] m", currentMouseWorldPosition.x, currentMouseWorldPosition.y);
+		// show some debug info
+		if (igui.begin("Debug", null, 0)) {
+			igui.text("App Delta:  %.2f ms (%.2f FPS)", delta * 1000, 1.0f / delta);
+			igui.text("App Update: %.2f ms (%.2f FPS)", updateTime * 1000, 1.0f / updateTime);
+			igui.text("Mouse: [%.2f, %.2f] m", currentMouseWorldPosition.getX(), currentMouseWorldPosition.getY());
 
+			igui.end();
+		}
+
+		// render ImGUI
 		igui.render();
-		lwjglGL3.renderDrawData(igui.getDrawData());
-		window.swapBuffers();
+		gln.GlnKt.glViewport(window.getFramebufferSize());
+		lwjglGlfw.renderDrawData(igui.getDrawData());
 
-		gln.GlnKt.checkError("loop", true); // TODO remove
+		// this is from the example, not sure if necessary
+		if (ImguiKt.getDEBUG())
+			gln.GlnKt.checkError("loop", true);
 
 	}
 
@@ -393,9 +348,10 @@ public class Main2 {
 		app.dispose();
 
 		// terminate stuff (this should be done lastly!)
-		lwjglGL3.shutdown();
-		ContextKt.destroy(ctx);
+		lwjglGlfw.shutdown();
+		ctx.destroy();
 
+		window.destroy();
 		glfw.terminate();
 
 	}

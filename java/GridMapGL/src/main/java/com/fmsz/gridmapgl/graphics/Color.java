@@ -48,10 +48,10 @@ public class Color {
 	}
 
 	public Color(Vec4 color) {
-		this.r = color.x;
-		this.g = color.y;
-		this.b = color.z;
-		this.a = color.w;
+		this.r = color.getX();
+		this.g = color.getY();
+		this.b = color.getZ();
+		this.a = color.getW();
 	}
 
 	/** https://github.com/libgdx/libgdx/blob/master/gdx/src/com/badlogic/gdx/utils/NumberUtils.java */

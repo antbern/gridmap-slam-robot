@@ -15,12 +15,15 @@
  *******************************************************************************/
 package com.fmsz.gridmapgl.graphics;
 
-import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.GL_LINES;
+import static org.lwjgl.opengl.GL11.GL_POINTS;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 
 import com.fmsz.gridmapgl.math.MathUtil;
 
 import glm_.mat4x4.Mat4;
-import glm_.vec2.Vec2;
+//import glm_.vec2.Vec2;
+import glm_.vec2.*;
 
 /**
  * Implements the rendering interface in IRenderer using the primitive renderer (a lot faster than immediate mode)
@@ -48,7 +51,7 @@ public class ShapeRenderer {
 	}
 
 	public void line(Vec2 start, Vec2 end, Color color) {
-		line(start.x, start.y, end.x, end.y, color);
+		line(start.getX(), start.getY(), end.getX(), end.getY(), color);
 	}
 
 	public void line(float x1, float y1, float x2, float y2, Color color) {
@@ -71,7 +74,7 @@ public class ShapeRenderer {
 	}
 
 	public void rect(Vec2 pos, Vec2 size, Color color) {
-		rect(pos.x, pos.y, size.x, size.y, color.r, color.b, color.g, color.a);
+		rect(pos.getX(), pos.getY(), size.getX(), size.getY(), color.r, color.b, color.g, color.a);
 	}
 
 	public void rect(float x, float y, float width, float height, float r, float g, float b, float a) {
@@ -122,7 +125,7 @@ public class ShapeRenderer {
 	// draws a circle at the specified position
 
 	public void circle(Vec2 pos, float radius, Color color) {
-		circle(pos.x, pos.y, radius, color);
+		circle(pos.getX(), pos.getY(), radius, color);
 	}
 
 	public void circle(float x, float y, float radius, Color color) {
