@@ -92,7 +92,8 @@ public class SLAM {
 			gridMap.computeLikelihoodMap(p.m);
 			
 			// optimize pose position to maximize measurement likelihood
-			p.pose = gridMap.findBestPose(p.m, z, p.pose);
+			//p.pose = gridMap.findBestPose(p.m, z, p.pose);
+			p.pose = gridMap.findBestPoseOptim(p.m, z, u, p.pose);
 
 			p.weight = gridMap.probabilityOf(p.m, z, p.pose);
 			weightSum += p.weight;

@@ -25,6 +25,16 @@ import com.fmsz.gridmapgl.math.MathUtil;
 import com.fmsz.gridmapgl.math.Transform;
 import com.fmsz.gridmapgl.slam.Observation.Measurement;
 
+import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.MaxEval;
+import org.apache.commons.math3.optim.MaxIter;
+import org.apache.commons.math3.optim.PointValuePair;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
+
 import glm_.vec2.Vec2;
 import glm_.vec2.Vec2i;
 
@@ -62,6 +72,9 @@ public class GridMap {
 	public static class GridMapData {
 		public double[] logData, likelihoodData;
 	}
+
+	/** Used for crude "scan matching" by maxmimizing the likelihood of the measurement given the start pose and odometry */
+	private BOBYQAOptimizer optimizer = new BOBYQAOptimizer(6);
 
 	/** Create a new GridMap with the given width and height in meters using the the given resolution */
 	public GridMap(float width, float height, float resolution, Vec2 position) {
@@ -330,6 +343,29 @@ public class GridMap {
 		// System.out.println(maxProb);
 
 		return best;
+	}
+
+	public Pose findBestPoseOptim(GridMapData map, Observation z, Odometry u, Pose startPose) {
+
+		// function to optimize
+		MultivariateFunction mvf = new MultivariateFunction() {
+
+			@Override
+			public double value(double[] point) {
+				Pose p = new Pose((float) point[0], (float) point[1], (float) point[2]);
+				return probabilityOf(map, z, p) * u.probabiliyOf(startPose, p);
+			}
+		};
+
+		// do optimization with some parameters
+		PointValuePair pvp = optimizer.optimize(
+			GoalType.MAXIMIZE, SimpleBounds.unbounded(3), new MaxEval(500), new MaxIter(100), 
+			new ObjectiveFunction(mvf),	new InitialGuess(new double[] { startPose.x, startPose.y, startPose.theta })
+		);
+		
+		// get and return the result
+		double[] res = pvp.getPoint();
+		return new Pose((float) res[0], (float) res[1], (float) res[2]);
 	}
 
 	public void render(ShapeRenderer rend, GridMapData map, boolean renderLines, boolean renderLikelihood) {

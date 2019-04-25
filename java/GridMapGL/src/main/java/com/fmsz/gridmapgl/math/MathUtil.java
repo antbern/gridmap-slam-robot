@@ -15,6 +15,8 @@
  *******************************************************************************/
 package com.fmsz.gridmapgl.math;
 
+import org.apache.commons.math3.util.FastMath;
+
 public class MathUtil {
 	public static final float PI = (float) Math.PI;
 	public static final float PI2 = (float) Math.PI * 2;
@@ -26,27 +28,27 @@ public class MathUtil {
 	 * Methods for calculating sin and cos with float values instead of using double
 	 */
 	public static float sin(float radians) {
-		return (float) Math.sin(radians);
+		return (float) FastMath.sin(radians);
 	}
 
 	public static double sin(double radians) {
-		return Math.sin(radians);
+		return FastMath.sin(radians);
 	}
 
 	public static float cos(float radians) {
-		return (float) Math.cos(radians);
+		return (float) FastMath.cos(radians);
 	}
 
 	public static double cos(double radians) {
-		return Math.cos(radians);
+		return FastMath.cos(radians);
 	}
 
 	public static float atan2(float y, float x) {
-		return (float) Math.atan2(y, x);
+		return (float) FastMath.atan2(y, x);
 	}
 
 	public static double atan2(double y, double x) {
-		return Math.atan2(y, x);
+		return FastMath.atan2(y, x);
 	}
 
 	// TODO: check this, do we want angles in the range [-PI, PI] instead of [0, 2PI] ???

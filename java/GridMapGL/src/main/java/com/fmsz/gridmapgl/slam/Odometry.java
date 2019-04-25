@@ -15,14 +15,19 @@
  *******************************************************************************/
 package com.fmsz.gridmapgl.slam;
 
-import java.util.Random;
-
 import com.fmsz.gridmapgl.math.MathUtil;
+
+import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.Well1024a;
 
 /** Class for storing the odometry measurement associated with this observation */
 public class Odometry {
+	// shared random generator for the normal distributions
+	private static RandomGenerator rndGen = new Well1024a();
+
 	// used to add noise when applying to Pose
-	private static Random rand = new Random();
+	private NormalDistribution ndCenter, ndTheta = new NormalDistribution();
 
 	public double dCenter, dTheta;
 	private double dCenterSD, dThetaSD;
@@ -47,8 +52,6 @@ public class Odometry {
 		dTheta = (dRight - dLeft) / Robot.WHEEL_DISTANCE;
 
 		recalculateStdDev();
-
-		// System.out.println(String.format("%.2f, %.2f", dCenter, dTheta * MathUtil.RAD_TO_DEG));
 	}
 
 	/**
@@ -56,14 +59,13 @@ public class Odometry {
 	 */
 	public void recalculateStdDev() {
 		// calculate desired standard deviations, +/- 2SD contains 95.4%
-		// basic principle: default base case + % of changed amount		
-		dCenterSD = (0.01 + Math.abs(dCenter) * 0.1) / 2;
+		// basic principle: default base case + % of changed amount
+		dCenterSD = (0.01 + Math.abs(dCenter) * 0.05) / 2;
 		dThetaSD = 5 * MathUtil.DEG_TO_RAD + 0.1 * Math.abs(dTheta);
 
-		System.out.println("C: " + dCenter + " -> sd=" + dCenterSD);
-		System.out.println("T: " + dTheta + " -> sd=" + dThetaSD * MathUtil.RAD_TO_DEG);
-		System.out.println();
-		
+		ndCenter = new NormalDistribution(rndGen, dCenter, dCenterSD);
+		ndTheta = new NormalDistribution(rndGen, dTheta, dThetaSD);
+
 	}
 
 	/**
@@ -75,21 +77,28 @@ public class Odometry {
 	public void apply(Pose p) {
 
 		// take a sample from this very simple motion model
-		double d = dCenter + rand.nextGaussian() * dCenterSD;
-		double theta = dTheta + rand.nextGaussian() * dThetaSD;
+		double d = ndCenter.sample();
+		double theta = ndTheta.sample();
 
 		// do not add noise when we have not moved!
-		
+		/*
 		if (dCenter == 0) {
 			d = 0;
 			theta = 0;
 		}
-		
+		*/
 
 		// apply movement, angle first since this controls the direction of the traveled distance
 		p.theta = (float) MathUtil.angleConstrain(p.theta + theta);
 		p.x += MathUtil.cos(p.theta) * d;
 		p.y += MathUtil.sin(p.theta) * d;
 
+	}
+
+	// Calculates the probability of being at pose p when starting at pose start given this odometry
+	public double probabiliyOf(Pose start, Pose p) {
+		// calculate moved distance
+		double dist = Math.sqrt(start.x - p.x) * (start.x - p.x) + (start.y - p.y) * (start.y - p.y);
+		return ndCenter.probability(dist) * ndTheta.probability(p.theta);
 	}
 }
