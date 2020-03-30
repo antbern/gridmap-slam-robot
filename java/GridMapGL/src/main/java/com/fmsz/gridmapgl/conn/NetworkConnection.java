@@ -9,8 +9,8 @@ import imgui.ImGui;
 
 public class NetworkConnection implements IConnection {
 	// GUI Stuff
-	private char[] hostBuff = new char[64];
-	private char[] portBuff = new char[32];
+	private byte[] hostBuff = new byte[64];
+	private byte[] portBuff = new byte[32];
 
 	// connection stuff
 	private static final String defaultHost = "192.168.0.185";
@@ -28,8 +28,8 @@ public class NetworkConnection implements IConnection {
 	@Override
 	public void init() {
 		// fill buffer with default host name
-		defaultHost.getChars(0, defaultHost.length(), hostBuff, 0);
-		defaultPort.getChars(0, defaultPort.length(), portBuff, 0);
+		System.arraycopy(defaultHost.getBytes(), 0, hostBuff, 0, defaultHost.length());
+		System.arraycopy(defaultPort.getBytes(), 0, portBuff, 0, defaultPort.length());
 	}
 
 	@Override

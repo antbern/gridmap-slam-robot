@@ -37,6 +37,7 @@ import com.fmsz.gridmapgl.slam.TimeFrame;
 import glm_.vec2.Vec2;
 import imgui.ImGui;
 import imgui.InputTextFlag;
+import imgui.MutableProperty0;
 import imgui.internal.ButtonFlag;
 
 /**
@@ -58,6 +59,7 @@ public class DataRecorder implements IDataSubscriber {
 
 	private enum State {
 		IDLE("Idle"), RECORD("Recording..."), REPLAY("Replaying...");
+
 		String description;
 
 		private State(String description) {
@@ -79,6 +81,7 @@ public class DataRecorder implements IDataSubscriber {
 
 	private boolean[] pausedArray = { false };
 	private int[] modeSelectArray = { 1 };
+	private MutableProperty0<Boolean> recorderOpen = new MutableProperty0<>(true);
 
 	// variables for selecting the appropriate file slot
 	private int[] currentSelectedFileIndex = { 0 };
@@ -86,7 +89,7 @@ public class DataRecorder implements IDataSubscriber {
 	private List<Path> availableFilePaths = new ArrayList<>();
 	private Path currentSelectedFile = null;
 	// private boolean[] fileChoosed = new boolean[] { true };
-	private char[] fileNameBuffer = new char[32];
+	private byte[] fileNameBuffer = new byte[32];
 	// private char[] lastFileNameBuffer = new char[32];
 
 	private String rootDirectory = "maps";
@@ -97,7 +100,7 @@ public class DataRecorder implements IDataSubscriber {
 	}
 
 	public void doGUI(ImGui imgui) {
-		if (imgui.begin("Recorder", null, 0)) {
+		if (imgui.begin("Recorder", recorderOpen, 0)) {
 			// select recording slot?
 
 			/*
@@ -142,7 +145,7 @@ public class DataRecorder implements IDataSubscriber {
 
 			if (imgui.beginPopup("filename", 0)) {
 
-				if (imgui.inputText("Filename:", fileNameBuffer, InputTextFlag.EnterReturnsTrue.i, (data) -> 0, null)) {
+				if (imgui.inputText("Filename:", fileNameBuffer, InputTextFlag.EnterReturnsTrue.i, (data) -> false, null)) {
 					String filename = new String(fileNameBuffer).trim();
 
 					availableFileNames.add(filename);
@@ -159,11 +162,11 @@ public class DataRecorder implements IDataSubscriber {
 			if (imgui.button("Save", new Vec2())) {
 				save(currentSelectedFile);
 			}
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			if (imgui.button("Load", new Vec2())) {
 				load(currentSelectedFile);
 			}
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			if (imgui.button("Clear", new Vec2())) {
 				currentTime = 0;
 				frameCounter = 0;
@@ -189,9 +192,9 @@ public class DataRecorder implements IDataSubscriber {
 			imgui.text("Time: %4.2f s", currentTime);
 
 			imgui.text("Mode: ");
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			imgui.radioButton("Record", modeSelectArray, 0);
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			imgui.radioButton("Replay", modeSelectArray, 1);
 
 			// record?
@@ -201,7 +204,7 @@ public class DataRecorder implements IDataSubscriber {
 					// begin recording
 					beginRecording();
 				}
-				imgui.sameLine(0);
+				imgui.sameLine(0, 4);
 				imgui.checkbox("Pause", pausedArray);
 				paused = pausedArray[0];
 				/*
@@ -209,7 +212,7 @@ public class DataRecorder implements IDataSubscriber {
 					paused = !paused;
 				}
 				*/
-				imgui.sameLine(0);
+				imgui.sameLine(0, 4);
 				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					endRecording();
 				}
@@ -218,18 +221,18 @@ public class DataRecorder implements IDataSubscriber {
 					// begin replay
 					beginPlayback();
 				}
-				imgui.sameLine(0);
+				imgui.sameLine(0, 4);
 				imgui.checkbox("Pause", pausedArray);
 				paused = pausedArray[0];
 				/*
 				if (imgui.buttonEx((paused ? "Resume" : "Pause"), new Vec2(), (running ? 0 : ButtonFlags.Disabled.getI()))) {
 					paused = !paused;
 				}*/
-				imgui.sameLine(0);
+				imgui.sameLine(0, 4);
 				if (imgui.buttonEx("Step", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					forceNextPlayback();
 				}
-				imgui.sameLine(0);
+				imgui.sameLine(0, 4);
 				if (imgui.buttonEx("Stop", new Vec2(), (running ? 0 : ButtonFlag.Disabled.getI()))) {
 					endPlayback();
 				}

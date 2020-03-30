@@ -73,7 +73,7 @@ public class GridMap {
 		public double[] logData, likelihoodData;
 	}
 
-	/** Used for crude "scan matching" by maxmimizing the likelihood of the measurement given the start pose and odometry */
+	/** Used for crude "scan matching" by maximizing the likelihood of the measurement given the start pose and odometry */
 	private BOBYQAOptimizer optimizer = new BOBYQAOptimizer(6);
 
 	/** Create a new GridMap with the given width and height in meters using the the given resolution */
@@ -256,7 +256,7 @@ public class GridMap {
 	 * @param p the Pose, x
 	 * @return p(z | m, x)
 	 */
-	private double zHit = 0.8, zRandom = 1 - zHit;
+	private double zHit = 0.9, zRandom = 1 - zHit;
 
 	public double probabilityOf(GridMapData map, Observation obs, Pose p) {
 		double product = 1;

@@ -25,6 +25,8 @@ import imgui.Col;
 import imgui.Dir;
 import imgui.FocusedFlag;
 import imgui.ImGui;
+import imgui.MouseButton;
+import imgui.MutableProperty0;
 
 /**
  * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial
@@ -51,9 +53,13 @@ public class ConnectionManager {
 	private List<String> selectedConnNames = new ArrayList<>();
 	private IConnection[] conn;
 
+	// window open variables
+	private MutableProperty0<Boolean> connectionOpen = new MutableProperty0<>(true);
+	private MutableProperty0<Boolean> controlsOpen = new MutableProperty0<>(true);
+
 	// Controls
 	private final float[] selectedSpeed = { 10.0f };
-	private final Vec2 arrowPadding = new Vec2(10, 10);
+	private final Vec2 arrowPadding = new Vec2(30, 30);
 	private Dir lastDirection = Dir.None;
 
 	// Pid values
@@ -79,7 +85,7 @@ public class ConnectionManager {
 	}
 
 	public void doGUI(ImGui imgui) {
-		if (imgui.begin("Connection", null, 0)) {
+		if (imgui.begin("Connection", connectionOpen, 0)) {
 
 			// let user select connection to use
 			imgui.combo("Connection", selectedConn, selectedConnNames, 5);
@@ -102,20 +108,20 @@ public class ConnectionManager {
 		imgui.end();
 
 		// controls window
-		if (imgui.begin("Controls", null, 0)) {
+		if (imgui.begin("Controls", controlsOpen, 0)) {
 
 			if (imgui.button("Single", new Vec2())) {
 				sendCommand(COMMAND_ONCE);
 			}
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			if (imgui.button("Enable", new Vec2())) {
 				sendCommand(COMMAND_ENABLE);
 			}
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			if (imgui.button("Disable", new Vec2())) {
 				sendCommand(COMMAND_DISABLE);
 			}
-			imgui.sameLine(0);
+			imgui.sameLine(0, 4);
 			if (imgui.button("Home", new Vec2())) {
 				sendCommand(COMMAND_HOME_SENSOR);
 			}
@@ -136,16 +142,16 @@ public class ConnectionManager {
 			Dir selectedDirection = Dir.None;
 			// Up arrow
 			imgui.newLine();
-			imgui.sameLine(45);
+			imgui.sameLine(45, 0);
 
 			imgui.arrowButtonEx("11", Dir.Up, arrowPadding, 0);
-			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
+			if (imgui.isItemHovered(0) && imgui.isMouseDown(MouseButton.Left)) {
 				selectedDirection = Dir.Up;
 			}
 
 			// Left arrow
 			imgui.arrowButtonEx("10", Dir.Left, arrowPadding, 0);
-			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
+			if (imgui.isItemHovered(0) && imgui.isMouseDown(MouseButton.Left)) {
 				selectedDirection = Dir.Left;
 			}
 
@@ -154,17 +160,17 @@ public class ConnectionManager {
 			// imgui.button("O", new Vec2(41-8, 41-8));
 
 			// Right arrow
-			imgui.sameLine(82);
+			imgui.sameLine(82, 0);
 			imgui.arrowButtonEx("13", Dir.Right, arrowPadding, 0);
-			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
+			if (imgui.isItemHovered(0) && imgui.isMouseDown(MouseButton.Left)) {
 				selectedDirection = Dir.Right;
 			}
 
 			// Down arrow
 			imgui.newLine();
-			imgui.sameLine(45);
+			imgui.sameLine(45, 0);
 			imgui.arrowButtonEx("12", Dir.Down, arrowPadding, 0);
-			if (imgui.isItemHovered(0) && imgui.isMouseDown(0)) {
+			if (imgui.isItemHovered(0) && imgui.isMouseDown(MouseButton.Left)) {
 				selectedDirection = Dir.Down;
 			}
 

@@ -63,6 +63,7 @@ public class SLAM {
 
 	/** Resets all the particles to an initial Pose of (0, 0, 0) and with a blank map */
 	public void reset() {
+		particles.clear();
 		for (int i = 0; i < numParticles; i++) {
 			Particle p = new Particle(new Pose(0, 0, 0), gridMap.createMapData(null));
 

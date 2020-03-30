@@ -37,6 +37,7 @@ import com.fmsz.gridmapgl.slam.TimeFrame;
 import glm_.vec2.Vec2;
 import imgui.Cond;
 import imgui.ImGui;
+import imgui.MutableProperty0;
 
 /**
  * The main "brain" of the system that instantiates and handles all other objects involved in the SLAM procedure.
@@ -59,6 +60,8 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 	private static final int MAP_STRONGEST = 0;
 	private static final int MAP_SPECIFIC = 1;
 	private static final int MAP_COMBINED = 2;
+	
+	private MutableProperty0<Boolean> gridmapOpen = new MutableProperty0<>(true);
 
 	private boolean[] drawGridLines = new boolean[] { false };
 	private boolean[] drawLikelihood = new boolean[] { false };
@@ -130,7 +133,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 		// set last observation to the raw one
 		lastRawObservation = frame.z;
 
-		System.out.printf("[Odemetry] Rot=%.2f (%.2f), D=%.2f \n", frame.u.dTheta, frame.u.dTheta * MathUtil.RAD_TO_DEG, frame.u.dCenter);
+		//System.out.printf("[Odemetry] Rot=%.2f (%.2f), D=%.2f \n", frame.u.dTheta, frame.u.dTheta * MathUtil.RAD_TO_DEG, frame.u.dCenter);
 
 		// create new observation containing corrected data
 		lastObservation = new Observation();
@@ -213,7 +216,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 		DataEventHandler.getInstance().handleEvents(1);
 
 		// do a GUI for the GridMap
-		if (imgui.begin("Grid Map", null, 0)) {
+		if (imgui.begin("Grid Map", gridmapOpen, 0)) {
 			/*
 			if (gridMap.pointInMap(mousePos)) {
 				
@@ -237,16 +240,17 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 				bool = val;
 			});
 			*/
+			
 
-			imgui.setNextTreeNodeOpen(true, Cond.FirstUseEver);
+			imgui.setNextItemOpen(true, Cond.FirstUseEver);
 			if (imgui.collapsingHeader("Render Options", null, 0)) {
 
-				imgui.setNextTreeNodeOpen(true, Cond.FirstUseEver);
+				imgui.setNextItemOpen(true, Cond.FirstUseEver);
 				if (imgui.treeNode("Map")) {
 
 					// what map content to show
 					imgui.radioButton("Occupancy", mapDrawTypeSelectArray, TYPE_OCCUPANCY);
-					imgui.sameLine(0);
+					imgui.sameLine(0,0);
 					imgui.radioButton("Likelihood", mapDrawTypeSelectArray, TYPE_LIKELIHOOD);
 
 					drawLikelihood[0] = mapDrawTypeSelectArray[0] == TYPE_LIKELIHOOD;
@@ -274,7 +278,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 				}
 				imgui.newLine();
 
-				imgui.setNextTreeNodeOpen(true, Cond.FirstUseEver);
+				imgui.setNextItemOpen(true, Cond.FirstUseEver);
 				if (imgui.treeNode("Features")) {
 
 					imgui.checkbox("Grid Lines", drawGridLines);
@@ -293,7 +297,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 			imgui.newLine();
 
-			imgui.setNextTreeNodeOpen(true, Cond.FirstUseEver);
+			imgui.setNextItemOpen(true, Cond.FirstUseEver);
 			if (imgui.collapsingHeader("SLAM Options", 0)) {
 				imgui.text("Neff: %.3f", neff);
 
@@ -303,6 +307,15 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 				}
 
 				imgui.checkbox("Automatic Resampling", automaticResampling);
+
+				// button for resetting the map and stuff
+				if (imgui.button("Reset", new Vec2())){
+					slam.reset();
+					lastObservation = null;
+					lastRawObservation = null;
+					strongestParticle = slam.getStrongestParticle();
+					currentCombinedPose = null;
+				}
 			}
 
 			/*
@@ -363,7 +376,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 
 		switch (mapDrawSelectArray[0]) {
 		case MAP_STRONGEST:
-			mapToRender = strongestParticle.m;
+			mapToRender = strongestParticle != null ? strongestParticle.m : null;
 			break;
 
 		case MAP_SPECIFIC:

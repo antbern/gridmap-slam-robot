@@ -23,6 +23,8 @@ import static org.lwjgl.opengl.GL11.*;
 
 import java.io.IOException;
 
+import org.lwjgl.glfw.GLFW;
+
 import com.fmsz.gridmapgl.app.GridMapApp;
 import com.fmsz.gridmapgl.app.IApplication;
 import com.fmsz.gridmapgl.graphics.Camera;
@@ -32,18 +34,22 @@ import glm_.vec2.Vec2d;
 import glm_.vec2.Vec2i;
 import glm_.vec4.Vec4;
 import imgui.Cond;
-import imgui.Context;
-import imgui.IO;
+import imgui.classes.Context;
+import imgui.impl.gl.ImplGL3;
+import imgui.classes.IO;
 import imgui.ImGui;
-import imgui.ImguiKt;
-import imgui.impl.LwjglGlfw;
-import imgui.impl.LwjglGlfw.GlfwClientApi;
+import imgui.MutableProperty0;
+import imgui.impl.glfw.ImplGlfw;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function3;
 import uno.glfw.GlfwWindow;
 import uno.glfw.VSync;
 import uno.glfw.windowHint.Profile;
+
+
+import static gln.GlnKt.glClearColor;
+import static gln.GlnKt.glViewport;
 
 public class Main2 {
 
@@ -123,7 +129,8 @@ public class Main2 {
 	private GlfwWindow window;
 	private uno.glfw.glfw glfw = uno.glfw.glfw.INSTANCE;
 
-	private LwjglGlfw lwjglGlfw;
+	private ImplGlfw implGlfw;
+	private ImplGL3 implGl3;
 	private ImGui igui = ImGui.INSTANCE;
 	private IO io;
 	private Context ctx;
@@ -148,6 +155,8 @@ public class Main2 {
 	private double lastTime;
 
 	private Vec4 clearColor = new Vec4(0.45f, 0.55f, 0.6f, 1f);
+	
+	private MutableProperty0<Boolean> debugOpen = new MutableProperty0<>(true);
 
 	public void run() {
 
@@ -157,7 +166,6 @@ public class Main2 {
 		// call the main loop until window is closed
 		window.loop((MemoryStack) -> {
 			loop();
-			return Unit.INSTANCE;
 		});
 
 		// cleanup
@@ -169,6 +177,7 @@ public class Main2 {
 		////// PLATFORM SETUP //////
 
 		// initialize glfw
+		GLFW.glfwSetErrorCallback((error, description) -> System.out.println("Glfw Error " + error + ": " + description));
 		glfw.init("3.3", Profile.core, true);
 
 		// create GLFW window
@@ -187,10 +196,12 @@ public class Main2 {
 		// io.setIniFilename("res/config/imgui.ini");
 
 		// Setup style
-		igui.styleColorsDark();
+		igui.styleColorsDark(null);
 
 		// Setup Platform/Renderer bindings
-		lwjglGlfw = new LwjglGlfw(window, true, GlfwClientApi.OpenGL, null);
+		implGlfw = new ImplGlfw(window, true, null);
+        implGl3 = new ImplGL3();
+
 
 		/////// APPLICATION SPECIFIC SETUP ////////
 
@@ -294,8 +305,9 @@ public class Main2 {
 	}
 
 	private void loop() {
-
-		lwjglGlfw.newFrame();
+		
+		implGl3.newFrame();
+		implGlfw.newFrame();
 		igui.newFrame();
 
 		// some default behavior (TODO: probablit not needed anymore)
@@ -304,8 +316,8 @@ public class Main2 {
 		igui.setNextWindowCollapsed(false, Cond.FirstUseEver);
 
 		// Rendering
-		gln.GlnKt.glViewport(window.getFramebufferSize());
-		gln.GlnKt.glClearColor(clearColor);
+		glViewport(window.getFramebufferSize());
+		glClearColor(clearColor);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glFrontFace(GL_CCW);
 		glEnable(GL_CULL_FACE);
@@ -323,9 +335,10 @@ public class Main2 {
 		float updateTime = (float) (glfwGetTime() - currentTime);
 
 		lastTime = currentTime;
+		
 
 		// show some debug info
-		if (igui.begin("Debug", null, 0)) {
+		if (igui.begin("Debug", debugOpen, 0)) {
 			igui.text("App Delta:  %.2f ms (%.2f FPS)", delta * 1000, 1.0f / delta);
 			igui.text("App Update: %.2f ms (%.2f FPS)", updateTime * 1000, 1.0f / updateTime);
 			igui.text("Mouse: [%.2f, %.2f] m", currentMouseWorldPosition.getX(), currentMouseWorldPosition.getY());
@@ -335,12 +348,12 @@ public class Main2 {
 
 		// render ImGUI
 		igui.render();
-		gln.GlnKt.glViewport(window.getFramebufferSize());
-		lwjglGlfw.renderDrawData(igui.getDrawData());
+		glViewport(window.getFramebufferSize());
+		implGl3.renderDrawData(igui.getDrawData());
 
 		// this is from the example, not sure if necessary
-		if (ImguiKt.getDEBUG())
-			gln.GlnKt.checkError("loop", true);
+		//if (ImguiKt.getDEBUG())
+		//	gln.GlnKt.checkError("loop", true);
 
 	}
 
@@ -348,7 +361,8 @@ public class Main2 {
 		app.dispose();
 
 		// terminate stuff (this should be done lastly!)
-		lwjglGlfw.shutdown();
+		implGlfw.shutdown();
+		implGl3.shutdown();
 		ctx.destroy();
 
 		window.destroy();

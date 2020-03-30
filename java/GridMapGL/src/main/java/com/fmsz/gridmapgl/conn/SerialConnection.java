@@ -21,7 +21,7 @@ public class SerialConnection implements IConnection {
 
 	private SerialPort[] availablePorts = null;
 	private SerialPort currentPort = null;
-	
+
 	@Override
 	public String getName() {
 		return "Serial";
@@ -43,11 +43,10 @@ public class SerialConnection implements IConnection {
 		imgui.combo("Port", currentSelectedPortName, portNames, 5);
 		imgui.combo("Baud", currentSelectedBaudRate, baudRateNames, 7);
 
-		//imgui.sameLine(0);
 		if (imgui.button("Refresh", new Vec2())) {
 			refreshList();
 		}
-		imgui.sameLine(0);
+		imgui.sameLine(0, 4);
 		if (imgui.button("Reset", new Vec2())) {
 			if (currentPort != null) {
 				currentPort.clearDTR();
