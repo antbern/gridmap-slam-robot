@@ -43,6 +43,7 @@ import imgui.impl.glfw.ImplGlfw;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function3;
+import uno.glfw.GlfwMonitor;
 import uno.glfw.GlfwWindow;
 import uno.glfw.VSync;
 import uno.glfw.windowHint.Profile;
@@ -181,7 +182,7 @@ public class Main2 {
 		glfw.init("3.3", Profile.core, true);
 
 		// create GLFW window
-		window = new GlfwWindow(1280, 720, "GridMapGL using ImGUI", 0, new Vec2i(Integer.MIN_VALUE), true);
+		window = new GlfwWindow(1280, 720, "GridMapGL using ImGUI", null, new Vec2i(Integer.MIN_VALUE), true);
 		window.init(true);
 
 		// Enable vsync
@@ -209,7 +210,8 @@ public class Main2 {
 		cam = new Camera();
 
 		// set up input handling
-		window.setCursorPosCallback(new Function1<Vec2, Unit>() {
+		
+		window.setCursorPosCB(new Function1<Vec2, Unit>() {
 			@Override
 			public Unit invoke(Vec2 pos) {
 				// if imgui wants the mouse, let it have it :)
@@ -249,7 +251,7 @@ public class Main2 {
 			}
 		});
 
-		window.setMouseButtonCallback(new Function3<Integer, Integer, Integer, Unit>() {
+		window.setMouseButtonCB(new Function3<Integer, Integer, Integer, Unit>() {
 			@Override
 			public Unit invoke(Integer button, Integer action, Integer flags) {
 				// if imgui wants the mouse, let it have it :)
@@ -272,7 +274,7 @@ public class Main2 {
 			}
 		});
 
-		window.setScrollCallback(new Function1<Vec2d, Unit>() {
+		window.setScrollCB(new Function1<Vec2d, Unit>() {
 			@Override
 			public Unit invoke(Vec2d amount) {
 				// if imgui wants the mouse, let it have it :)
@@ -284,7 +286,7 @@ public class Main2 {
 			}
 		});
 
-		window.setFramebufferSizeCallback(new Function1<Vec2i, Unit>() {
+		window.setFramebufferSizeCB(new Function1<Vec2i, Unit>() {
 			public Unit invoke(Vec2i size) {
 				// store current window size
 				currentWindowSize.put(size);

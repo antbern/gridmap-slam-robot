@@ -420,6 +420,7 @@ public class DataRecorder implements IDataSubscriber {
 				RecordedTimeFrame rtf = new RecordedTimeFrame();
 				rtf.timeStamp = dis.readFloat();
 				Odometry u = ObjectSerializer.readOdometry(dis);
+				//System.out.println(u.dCenter + ", " + u.dTheta);
 				Observation z = ObjectSerializer.readObservation(dis);
 				rtf.frame = new TimeFrame(z, u);
 
