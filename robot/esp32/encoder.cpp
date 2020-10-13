@@ -6,65 +6,80 @@
 // define variables here
 encoder_t encLeft, encRight;
 
-// based on code from https://www.circuitsathome.com/mcu/reading-rotary-encoder-on-arduino/
-void inline handleEncoder(encoder_t* enc){
-    portENTER_CRITICAL_ISR(&(enc->mux));
+// Adapted from: https://github.com/espressif/esp-idf/blob/master/examples/peripherals/pcnt/main/pcnt_example_main.c
+void init_pcnt(encoder_t *enc) {
+
+    pinMode(enc->encoderAPin, INPUT);
+	pinMode(enc->encoderBPin, INPUT);
+
+    pcnt_config_t pcnt_config = {
+        // Set PCNT input signal and control GPIOs
+        .pulse_gpio_num = enc->encoderAPin,
+        .ctrl_gpio_num = enc->encoderBPin,
         
-    //remember previous state
-    enc->old_AB <<= 2;                   
+        
+        // What to do when control input is low or high?
+        .lctrl_mode = PCNT_MODE_REVERSE, // Reverse counting direction if low
+        .hctrl_mode = PCNT_MODE_KEEP,    // Keep the primary counter mode if high
+        // What to do on the positive / negative edge of pulse input?
+        .pos_mode = PCNT_COUNT_INC,   // Count up on the positive edge
+        .neg_mode = PCNT_COUNT_DIS,   // Keep the counter value on the negative edge
+        
+        // Set the maximum and minimum limit values to watch (NOT USED!!)
+        .counter_h_lim = PCNT_MAX_VAL,
+        .counter_l_lim = PCNT_MIN_VAL,
 
-    // read new state
-    int8_t ENC_PORT = ((digitalRead(enc->encoderBPin)) ? (1 << 1) : 0) | ((digitalRead(enc->encoderAPin)) ? (1 << 0) : 0);
+        .unit = enc->pcnt_unit,
+        .channel = enc->pcnt_channel,
+    };
 
-    // add current state		
-    enc->old_AB |= ( ENC_PORT & 0x03 );
+    /* Initialize PCNT unit */
+    ESP_ERROR_CHECK( pcnt_unit_config(&pcnt_config) );
+    
+    /* Configure and enable the input filter */
+    pcnt_set_filter_value(pcnt_config.unit, 100);
+    pcnt_filter_enable(pcnt_config.unit);
 
-    // increment counter
-    enc->value += enc_states[( enc->old_AB & 0x0f )];
-
-    portEXIT_CRITICAL_ISR(&(enc->mux));
+    // lets go!
+    pcnt_counter_clear(pcnt_config.unit);
+    pcnt_counter_resume(pcnt_config.unit);
 }
-
-void IRAM_ATTR readEncoderLeft_ISR() {
-    handleEncoder(&encLeft);
-}
-
-void IRAM_ATTR readEncoderRight_ISR() {
-    handleEncoder(&encRight);
-}
-
 
 void initEncoders(){
-
-    // setup pin directions
-	pinMode(MOTOR_LEFT_ENCA, INPUT);
-	pinMode(MOTOR_LEFT_ENCB, INPUT);
-
-    pinMode(MOTOR_RIGHT_ENCA, INPUT);
-	pinMode(MOTOR_RIGHT_ENCB, INPUT);
 
     // set up pin definitions
     encLeft.encoderAPin = MOTOR_LEFT_ENCA;
     encLeft.encoderBPin = MOTOR_LEFT_ENCB;
+    encLeft.pcnt_unit = PCNT_UNIT_0;
+    encLeft.pcnt_channel = PCNT_CHANNEL_0;
 
     encRight.encoderAPin = MOTOR_RIGHT_ENCA;
     encRight.encoderBPin = MOTOR_RIGHT_ENCB;
+    encLeft.pcnt_unit = PCNT_UNIT_1;
+    encLeft.pcnt_channel = PCNT_CHANNEL_0;
 
+    // and initialize
+    init_pcnt(&encLeft);
+    init_pcnt(&encRight);
 
-    // attach all four interrupts
-    attachInterrupt(digitalPinToInterrupt(encLeft.encoderAPin), readEncoderLeft_ISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(encLeft.encoderBPin), readEncoderLeft_ISR, CHANGE);
+}
 
-    attachInterrupt(digitalPinToInterrupt(encRight.encoderAPin), readEncoderRight_ISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(encRight.encoderBPin), readEncoderRight_ISR, CHANGE);
+int16_t readEncoder(encoder_t* enc){
+    int16_t count;
+    pcnt_get_counter_value(enc->pcnt_unit, &count);
+    return count;
 }
 
 // resets the encoder
 void resetEncoder(encoder_t* enc){
-    portENTER_CRITICAL(&enc->mux);
+    pcnt_counter_clear(enc->pcnt_unit);
+}
 
-    enc->old_AB = 0;
-    enc->value = 0;
+int16_t readAndResetEncoder(encoder_t* enc) {
+    int16_t count;
+    pcnt_get_counter_value(enc->pcnt_unit, &count);
 
-    portEXIT_CRITICAL(&enc->mux);
+    pcnt_counter_clear(enc->pcnt_unit);
+
+    return count;
 }

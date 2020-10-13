@@ -21,9 +21,7 @@
 // struct defining the motor properties
 typedef struct {
 	encoder_t* enc;
-	uint8_t pwm_channel;
-    int32_t current_encoder_counter = 0;       // current encoder count
-    int32_t last_encoder_counter = 0;          // last encoder count, used for calculating rotational speed
+	uint8_t pwm_channel;    
     int32_t odometry_counter = 0;
 	PID_t pid;                                  // PID controller for velocity control
     double speed_reference = 0;                 // the reference value used for the PID-controller    
@@ -48,4 +46,4 @@ void actuate_motor(motor_t* motor, double u);
 double getMotorRotationSpeed(motor_t* motor, double dt);
 
 
-#endif MOTORS_H
+#endif // MOTORS_H

@@ -1,4 +1,3 @@
-
 #include "WiFi.h"
 #include <pthread.h>
 
@@ -8,13 +7,19 @@
 #include "motors.h"
 #include "sensor.h"
 
+#include "mdns.h"
+
+#define SERVER_PORT 5555
+
+static const char* TAG = "Main";
+
 //// VARIABLES ////
 
 // vairables for handling WiFi connection
 #include "wifi_settings.h"
 
 // webserver handling the connection on port 5555
-WiFiServer server(5555);
+WiFiServer server(SERVER_PORT);
 
 
 // thread for handling the motor pid control
@@ -32,7 +37,26 @@ void setup() {
 	initSensor();
 
 	// set up networked connection
+	
 	startWifi();
+	initialize_mdns();
+}
+
+// initializes mDNS to make the device discoverable by others on the network, taken from the examples/protocols/mdns example in esp-idf
+void initialize_mdns() {
+	// initialize mDNS
+	ESP_ERROR_CHECK( mdns_init() );
+
+	// set mDNS hostname
+	ESP_ERROR_CHECK( mdns_hostname_set("esp32robot") );
+
+	// set friendly name
+	ESP_ERROR_CHECK( mdns_instance_name_set("ESP32 Robot") );
+
+	// finally advertise our service
+	ESP_ERROR_CHECK( mdns_service_add(NULL, "_controller", "_tcp", SERVER_PORT, NULL, 0) );
+
+	Serial.println("Successfully registered mDNS service");
 }
 
 void startWifi(){
@@ -82,6 +106,9 @@ void startWifi(){
 		Serial.println(WiFi.localIP());
 	}
 
+	Serial.println("Starting listening...");
+
+
 	// start server listening
 	server.begin();
 }
@@ -101,7 +128,7 @@ void loop() {
 		// start a new thread for the motors
 		int ret = pthread_create(&motorThread, NULL, motorLoop, NULL);
 		if(ret){
-			Serial.println("Error creating thread");
+			ESP_LOGE(TAG, "Error creating thread");
 		}
 
 

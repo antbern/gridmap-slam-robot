@@ -19,4 +19,4 @@ typedef struct {
 double calculate_pid(PID_t* pid, double error, double h);
 void reset_pid(PID_t* pid);
 
-#endif PID_H
+#endif // PID_H

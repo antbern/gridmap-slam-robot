@@ -1,3 +1,5 @@
+#include "Arduino.h"
+
 #include "motors.h"
 #include "pid.h"
 #include "pins.h"
@@ -72,12 +74,7 @@ void resetMotors() {
     resetEncoder(motor_right.enc);
 
     motor_left.odometry_counter = 0;
-    motor_left.current_encoder_counter = 0;
-    motor_left.last_encoder_counter = 0;
-
     motor_right.odometry_counter = 0;
-    motor_right.current_encoder_counter = 0;
-    motor_right.last_encoder_counter = 0;
 }
 
 void stopMotorLoop(){
@@ -179,14 +176,8 @@ void actuate_motor(motor_t* motor, double u){
 }
 
 double getMotorRotationSpeed(motor_t* motor, double dt){
-    // read motor encoder
-    motor->current_encoder_counter = motor->enc->value;
 
-    // calculate difference in encoder counts since last time
-    double position_delta = motor->current_encoder_counter - (double)motor->last_encoder_counter;
-
-     // save current position
-    motor->last_encoder_counter = motor->current_encoder_counter;
+    double position_delta = (double) readAndResetEncoder(motor->enc);
 
     // increase odometry counter
     motor->odometry_counter += position_delta;

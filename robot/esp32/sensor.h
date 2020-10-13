@@ -14,4 +14,4 @@ float readFloat(WiFiClient* stream);
 void homeSensor();
 void resetSensor();
 
-#endif SENSOR_H
+#endif // SENSOR_H

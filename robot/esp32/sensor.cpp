@@ -61,7 +61,11 @@ void resetSensor(){
 
 void doSensorLoop(WiFiClient* stream){
     // check if there are any incoming bytes on the serial port
-	if(stream->available() > 0){
+
+	// TODO: check if this while loop makes any sense (basically to accept both motor speed commands 
+	// at the same time and avoid the right one always lagging behind)
+	while(stream->available() > 0){ 
+	
 		// read one byte
 		char input = stream->read();
 		
@@ -74,7 +78,7 @@ void doSensorLoop(WiFiClient* stream){
 			digitalWrite(STEPPER_EN, LOW);
 		}else if (input == 0x04 || input == 'D'){ // "disable continous"-command?
 			doContinously = 0;
-        }else if (input == 0x05 || input == 'H'){ // "disable continous"-command?
+        }else if (input == 0x05 || input == 'H'){ // "home sensor"-command?
 			homeSensor();
 		}else if (input == 0x08){ // "set resolution"-command?
 			char d;

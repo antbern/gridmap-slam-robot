@@ -1,24 +1,25 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
-// for the portMUX stuff
-#include "Arduino.h"
+#include <driver/pcnt.h>
+
+#define PCNT_MAX_VAL  (32767)
+#define PCNT_MIN_VAL (-32768)
 
 // a struct holding the encoder values
 typedef struct {
-    portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-    uint8_t old_AB = 0;
-    int32_t value = 0;
     int encoderAPin, encoderBPin;
-} encoder_t;
+    pcnt_unit_t pcnt_unit;
+    pcnt_channel_t pcnt_channel;
 
-// constant look-up table used by the ISR
-const int8_t enc_states[16] = {0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};
+} encoder_t;
 
 // theese are defined in encoder.cpp
 extern encoder_t encLeft, encRight;
 
 void initEncoders();
 void resetEncoder(encoder_t* enc);
+int16_t readEncoder(encoder_t* enc);
+int16_t readAndResetEncoder(encoder_t* enc);
 
-#endif ENCODER_H
+#endif // ENCODER_H

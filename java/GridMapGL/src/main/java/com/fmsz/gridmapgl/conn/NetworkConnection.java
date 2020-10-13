@@ -13,7 +13,7 @@ public class NetworkConnection implements IConnection {
 	private byte[] portBuff = new byte[32];
 
 	// connection stuff
-	private static final String defaultHost = "192.168.0.185";
+	private static final String defaultHost = "esp32robot.local";
 	private static final String defaultPort = "5555";
 
 	private Socket socket = null;

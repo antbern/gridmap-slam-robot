@@ -30,7 +30,9 @@
 #define MOTOR_LEFT_ENCB 33
 
 
-#define ENC_COUNTS_PER_REV (32 * 30 * 2)
+// NEW: 480
+// #define ENC_COUNTS_PER_REV (32 * 30 * 2)
+#define ENC_COUNTS_PER_REV 480
 
 
-#endif
+#endif // PINS_H
