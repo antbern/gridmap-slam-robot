@@ -210,8 +210,7 @@ public class ConnectionManager {
 				}
 
 				// send speed values to robot
-				sendFloat(0x10, speedLeft);
-				sendFloat(0x11, speedRight);
+				sendFloat(0x10, speedLeft, speedRight);
 			}
 
 			// PID tuning sliders
@@ -288,9 +287,22 @@ public class ConnectionManager {
 		}
 	}
 
-	private void sendFloat(int command, float value) {
-		int bits = Float.floatToIntBits(value);
-		sendCommand((byte) command, (byte) ((bits >> 24) & 0xff), (byte) ((bits >> 16) & 0xff), (byte) ((bits >> 8) & 0xff), (byte) (bits & 0xff));
+	private void sendFloat(int command, float... values) {
+
+		byte[] commandBuffer = new byte[1+values.length*4];
+		commandBuffer[0] = (byte) command;
+		for (int i = 0; i < values.length; i++) {
+
+			int bits = Float.floatToIntBits(values[i]);
+
+			commandBuffer[1+i*4 + 0] = (byte) ((bits >> 24) & 0xff);
+			commandBuffer[1+i*4 + 1] = (byte) ((bits >> 16) & 0xff);
+			commandBuffer[1+i*4 + 2] = (byte) ((bits >> 8) & 0xff);
+			commandBuffer[1+i*4 + 3] = (byte) (bits & 0xff);
+		}
+
+		sendCommand(commandBuffer);
+
 	}
 
 	public void dispose() {

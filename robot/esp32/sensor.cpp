@@ -87,10 +87,8 @@ void doSensorLoop(WiFiClient* stream){
 			
 			next_steps = (short) (STEPS_PER_ROTATION * ((float)d / 360.0f));
 			
-		}else if (input == 0x10){ // "set left motor speed" - command?
+		}else if (input == 0x10){ // "set motor speed" - command?
 			motor_left.speed_reference = (double) readFloat(stream);
-
-		}else if (input == 0x11){ // "set right motor speed" - command?
 			motor_right.speed_reference = (double) readFloat(stream);
 
 		} else if (input == 0x15) { // set K_P command?
