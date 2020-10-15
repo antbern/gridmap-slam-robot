@@ -58,14 +58,10 @@ void resetSensor(){
 	doContinously = 0;
 }
 
-
-void doSensorLoop(WiFiClient* stream){
-    // check if there are any incoming bytes on the serial port
-
-	// TODO: check if this while loop makes any sense (basically to accept both motor speed commands 
-	// at the same time and avoid the right one always lagging behind)
-	while(stream->available() > 0){ 
+void handleCommands(WiFiClient* stream) {
 	
+	while(stream->available() > 0){ 
+
 		// read one byte
 		char input = stream->read();
 		
@@ -78,7 +74,7 @@ void doSensorLoop(WiFiClient* stream){
 			digitalWrite(STEPPER_EN, LOW);
 		}else if (input == 0x04 || input == 'D'){ // "disable continous"-command?
 			doContinously = 0;
-        }else if (input == 0x05 || input == 'H'){ // "home sensor"-command?
+		}else if (input == 0x05 || input == 'H'){ // "home sensor"-command?
 			homeSensor();
 		}else if (input == 0x08){ // "set resolution"-command?
 			char d;
@@ -91,6 +87,8 @@ void doSensorLoop(WiFiClient* stream){
 			motor_left.speed_reference = (double) readFloat(stream);
 			motor_right.speed_reference = (double) readFloat(stream);
 
+			// Serial.printf("New motor speed: %5.3f, %5.3f\n", motor_left.speed_reference, motor_right.speed_reference);
+
 		} else if (input == 0x15) { // set K_P command?
 			motor_left.pid.Kp = motor_right.pid.Kp = (double) readFloat(stream);
 		} else if (input == 0x16) { // set K_I command?
@@ -100,11 +98,28 @@ void doSensorLoop(WiFiClient* stream){
 		}else if (input == 0x18) { // set T_f command?
 			motor_left.pid.Tf = motor_right.pid.Tf = (double) readFloat(stream);
 		}
-    }
+	}
+}
 
-   // only do measurement if 
-	if(doOnce != 0){
-				
+
+void doSensorLoop(void* parameter){
+	WiFiClient* stream = (WiFiClient*)parameter;
+
+	uint8_t con;
+	for (;;)
+	{	
+		while((con = stream->connected()) && doOnce == 0) {
+			vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms delay	
+		}
+
+		// if connection was closed, just break
+		if (!con){
+			break;
+		}
+
+		// make sure the motor is enabled
+		digitalWrite(STEPPER_EN, LOW);
+
 		// move the motor
 		step_motor(next_steps);
 		
@@ -113,7 +128,7 @@ void doSensorLoop(WiFiClient* stream){
 		
 		// check if we have done a complete revolution
 		if(step_counter > STEPS_PER_ROTATION){
-            step_counter -= STEPS_PER_ROTATION;
+			step_counter -= STEPS_PER_ROTATION;
 
 			// yes, send message (with odometry information) to indicate that
 			measurements[measurement_count].steps = -1;
@@ -141,7 +156,7 @@ void doSensorLoop(WiFiClient* stream){
 		
 
 		// take reading
-        while(!tfmini.available());
+		while(!tfmini.available());
 		
 		// save the reading to our buffer
 		measurements[measurement_count].steps = step_counter;
@@ -149,6 +164,8 @@ void doSensorLoop(WiFiClient* stream){
 		measurements[measurement_count].backDistance = tfmini.getStrength();
 		measurement_count++;	
 	}
+	
+	vTaskDelete(NULL);
 }
 
 // reads a single float value from the provided WiFiClient (blocking)

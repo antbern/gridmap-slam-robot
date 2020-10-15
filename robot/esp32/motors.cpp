@@ -81,7 +81,7 @@ void stopMotorLoop(){
     running = false;
 }
 
-void* motorLoop(void* parameter) {
+void motorLoop(void* parameter) {
     // initialize the time counter
 	unsigned long last_timer_us = micros();	
     
@@ -117,6 +117,8 @@ void* motorLoop(void* parameter) {
 
     // we are exiting, stop motors
     resetMotors();
+
+    vTaskDelete(NULL);
 }
 
 void handle_motor(motor_t* motor, double h){

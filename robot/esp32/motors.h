@@ -40,7 +40,7 @@ void resetMotors();
 
 void stopMotorLoop();
 
-void* motorLoop(void* parameter);
+void motorLoop(void* parameter);
 void handle_motor(motor_t* motor, double h);
 void actuate_motor(motor_t* motor, double u);
 double getMotorRotationSpeed(motor_t* motor, double dt);

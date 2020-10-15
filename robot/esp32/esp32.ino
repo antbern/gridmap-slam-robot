@@ -21,7 +21,6 @@ static const char* TAG = "Main";
 // webserver handling the connection on port 5555
 WiFiServer server(SERVER_PORT);
 
-
 // thread for handling the motor pid control
 pthread_t motorThread;
 
@@ -125,17 +124,13 @@ void loop() {
 		// home the sensor
 		homeSensor();
 
-		// start a new thread for the motors
-		int ret = pthread_create(&motorThread, NULL, motorLoop, NULL);
-		if(ret){
-			ESP_LOGE(TAG, "Error creating thread");
-		}
+		// start a new thread for the motors and for reading the sensors
+		xTaskCreate(motorLoop, "motorLoop", 10000, NULL, 1, NULL);
+		xTaskCreate(doSensorLoop, "sensorLoop", 10000, &client, 1, NULL);
 
-
-		// loop while the client's connected         
+		// do regular loop to handle the incoming control messages
 		while (client.connected()) { 
-			// do regular loop here
-			doSensorLoop(&client);
+			handleCommands(&client);
 		}
 
 		Serial.println("Client Disconnected");

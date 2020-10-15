@@ -8,7 +8,8 @@
 
 
 void initSensor();
-void doSensorLoop(WiFiClient* stream);
+void handleCommands(WiFiClient* stream);
+void doSensorLoop(void* parameter);
 
 float readFloat(WiFiClient* stream);
 void homeSensor();
