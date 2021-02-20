@@ -9,7 +9,7 @@
 
 // struct holding a single measurement (note that the struct's variables must be aligned on a 2-byte boundary, or padding bytes will be added)
 typedef struct {
-	short header = 0x5555;
+	short header = 0x55AA;
 	short steps;
 	short frontDistance, backDistance;
 } measurement_t;
@@ -20,9 +20,6 @@ int measurement_count = 0;
 
 // variables for the "LiDAR" unit
 TFmini tfmini;
-char doOnce = 0;
-char doContinously = 0;
-unsigned short step_counter = 0, next_steps = 4;
 
 // private function prototypes
 void step_motor(unsigned short steps);
@@ -54,11 +51,16 @@ void initSensor(){
 }
 
 void resetSensor(){
-	doOnce = 0;
-	doContinously = 0;
+	// doOnce = 0;
+	// doContinously = 0;
 }
 
-void handleCommands(WiFiClient* stream) {
+sensor_queue_item_t handleCommandsItem;
+
+void handleCommands(sensor_loop_parameters_t* params) {
+
+
+	WiFiClient* stream = params->client;
 	
 	while(stream->available() > 0){ 
 
@@ -66,22 +68,29 @@ void handleCommands(WiFiClient* stream) {
 		char input = stream->read();
 		
 		if(input == 0x01 || input == 'O'){ // "do once"-command?
-			doOnce = 1;
-			digitalWrite(STEPPER_EN, LOW);
+			handleCommandsItem.command = ENABLE_ONCE;
+			xQueueSendToBack( params->queueHandle, &handleCommandsItem, 0);
+
+
 		}else if (input == 0x02 || input == 'E'){ // "enable continous"-command?
-			doContinously = 1;
-			doOnce = 1;
-			digitalWrite(STEPPER_EN, LOW);
+			handleCommandsItem.command = ENABLE_CONTINOUSLY;
+			xQueueSendToBack( params->queueHandle, &handleCommandsItem, 0);
 		}else if (input == 0x04 || input == 'D'){ // "disable continous"-command?
-			doContinously = 0;
+			handleCommandsItem.command = DISABLE;
+			xQueueSendToBack( params->queueHandle, &handleCommandsItem, 0);
 		}else if (input == 0x05 || input == 'H'){ // "home sensor"-command?
-			homeSensor();
+			handleCommandsItem.command = HOME_SENSOR;
+			xQueueSendToBack( params->queueHandle, &handleCommandsItem, 0);
 		}else if (input == 0x08){ // "set resolution"-command?
 			char d;
 			// wait for next byte
 			while ((d = stream->read()) == -1);
 			
-			next_steps = (short) (STEPS_PER_ROTATION * ((float)d / 360.0f));
+			short next_steps = (short) (STEPS_PER_ROTATION * ((float)d / 360.0f));
+
+			handleCommandsItem.command = SET_STEP_LENGTH;
+			handleCommandsItem.data = next_steps;
+			xQueueSendToBack( params->queueHandle, &handleCommandsItem, 0);
 			
 		}else if (input == 0x10){ // "set motor speed" - command?
 			motor_left.speed_reference = (double) readFloat(stream);
@@ -103,67 +112,119 @@ void handleCommands(WiFiClient* stream) {
 
 
 void doSensorLoop(void* parameter){
-	WiFiClient* stream = (WiFiClient*)parameter;
+	sensor_loop_parameters_t* params  = (sensor_loop_parameters_t*) parameter;
 
-	uint8_t con;
-	for (;;)
-	{	
-		while((con = stream->connected()) && doOnce == 0) {
-			vTaskDelay(10 / portTICK_PERIOD_MS); // 10ms delay	
+	QueueHandle_t queue = params->queueHandle;
+	WiFiClient* stream = params->client;
+
+	// internal state variables
+	bool doOnce = 0;
+	bool doContinously = 0;
+	unsigned short step_counter = 0, next_steps = 4;
+
+	bool shouldTerminate = false;
+
+	BaseType_t xStatus;
+	sensor_queue_item_t item;
+	while (!shouldTerminate){	
+		
+		// if we are not actively taking measurements, then wait indefinitely
+		// otherwise don't wait for anything to appear in the queue
+
+		TickType_t ticksToWait = doOnce ? 0 : portMAX_DELAY;
+		// Serial.printf("Entering queue receive with %d ticksToWait\n", ticksToWait);
+		
+		xStatus = xQueueReceive(queue, &item, ticksToWait);
+
+		// Serial.printf("Status: %d, doOnce=%d\n", xStatus, doOnce);
+		if (xStatus == pdPASS) {
+			// Serial.println("Got new message!");
+			switch (item.command) {
+			case ENABLE_ONCE:
+				doOnce = true;
+				break;
+			case ENABLE_CONTINOUSLY:
+				doOnce = true;
+				doContinously = true;
+				break;
+			case DISABLE:
+				doContinously = false;
+				break;
+			case SET_STEP_LENGTH:
+				next_steps = item.data;
+				break;
+			case HOME_SENSOR:
+				homeSensor();
+				step_counter = 0;
+				break;
+			case TERMINATE:
+				shouldTerminate = true;
+				break;
+			default:
+				break;
+			}
 		}
 
-		// if connection was closed, just break
-		if (!con){
-			break;
+		// Serial.printf("After: doOnce=%d, doContinously=%d\n", doOnce, doContinously);
+
+		if (doOnce){
+
+			// make sure the motor is enabled
+			digitalWrite(STEPPER_EN, LOW);
+
+			// move the motor
+			step_motor(next_steps);
+			
+			// increase the counter and "loop back" if we exceed the number of steps for one compleete sensor revolution
+			step_counter += next_steps;
+			
+			// check if we have done a complete revolution
+			if(step_counter > STEPS_PER_ROTATION){
+				step_counter -= STEPS_PER_ROTATION;
+
+				// TODO: make this data be available to a secondary task that collates all the information
+
+				// yes, send message (with odometry information) to indicate that
+				measurements[measurement_count].steps = -1;
+				measurements[measurement_count].frontDistance = motor_left.odometry_counter;
+				measurements[measurement_count].backDistance = motor_right.odometry_counter;
+				measurement_count++;
+
+				// write all data to client
+				stream->write((const uint8_t*) &measurements, sizeof(measurement_t) * measurement_count);
+
+				// reset buffer counter
+				measurement_count = 0;
+				
+				// reset odometry counters
+				motor_left.odometry_counter = 0;
+				motor_right.odometry_counter = 0;
+				
+				// this allows the code to either do repeated measurements (if doContinously = true) or only do a measurement once (if doContinously = false and doOnce is set to true once)
+				doOnce = doContinously;
+				
+				// if stopped, disable the motor
+				if(!doOnce)
+					digitalWrite(STEPPER_EN, HIGH);
+			}
+			
+			// Serial.println("Before reading TFMini");
+
+			// take reading
+			while(!tfmini.available());
+
+			// Serial.println("After reading TFMini");
+			
+			// save the reading to our buffer
+			measurements[measurement_count].steps = step_counter;
+			measurements[measurement_count].frontDistance = tfmini.getDistance() * 10;
+			measurements[measurement_count].backDistance = tfmini.getStrength();
+			measurement_count++;	
+
 		}
-
-		// make sure the motor is enabled
-		digitalWrite(STEPPER_EN, LOW);
-
-		// move the motor
-		step_motor(next_steps);
-		
-		// increase the counter and "loop back" if we exceed the number of steps for one compleete sensor revolution
-		step_counter += next_steps;
-		
-		// check if we have done a complete revolution
-		if(step_counter > STEPS_PER_ROTATION){
-			step_counter -= STEPS_PER_ROTATION;
-
-			// yes, send message (with odometry information) to indicate that
-			measurements[measurement_count].steps = -1;
-			measurements[measurement_count].frontDistance = motor_left.odometry_counter;
-			measurements[measurement_count].backDistance = motor_right.odometry_counter;
-			measurement_count++;
-
-			// write all data to client
-			stream->write((const uint8_t*) &measurements, sizeof(measurement_t) * measurement_count);
-
-			// reset buffer counter
-			measurement_count = 0;
-			
-			// reset odometry counters
-			motor_left.odometry_counter = 0;
-			motor_right.odometry_counter = 0;
-			
-			// this allows the code to either do repeated measurements (if doContinously = 1) or only do a measurement once (if doContinously = 0 and doOnce is set to 1 once)
-			doOnce = doContinously;
-			
-			// if stopped, disable the motor
-			if(doOnce == 0)
-				digitalWrite(STEPPER_EN, HIGH);
-		}
-		
-
-		// take reading
-		while(!tfmini.available());
-		
-		// save the reading to our buffer
-		measurements[measurement_count].steps = step_counter;
-		measurements[measurement_count].frontDistance = tfmini.getDistance() * 10;
-		measurements[measurement_count].backDistance = tfmini.getStrength();
-		measurement_count++;	
 	}
+
+	digitalWrite(STEPPER_EN, HIGH);
 	
 	vTaskDelete(NULL);
 }
@@ -210,9 +271,6 @@ void homeSensor(){
 	
 	// disable stepper
 	digitalWrite(STEPPER_EN, HIGH);
-
-	// reset step counter
-	step_counter = 0;
 }
 
 void step_motor(unsigned short steps){

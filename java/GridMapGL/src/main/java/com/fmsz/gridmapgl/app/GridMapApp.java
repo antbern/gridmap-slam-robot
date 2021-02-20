@@ -38,6 +38,7 @@ import glm_.vec2.Vec2;
 import imgui.Cond;
 import imgui.ImGui;
 import imgui.MutableProperty0;
+import imgui.SliderFlag;
 
 /**
  * The main "brain" of the system that instantiates and handles all other objects involved in the SLAM procedure.
@@ -263,7 +264,7 @@ public class GridMapApp implements IApplication, IDataSubscriber {
 						break;
 
 					case MAP_SPECIFIC:
-						imgui.sliderInt("Particle", selectedParticle, 0, 0, slam.getParticles().size() - 1, "%.0f");
+						imgui.sliderInt("Particle", selectedParticle, 0, 0, slam.getParticles().size() - 1, "%.0f", SliderFlag.None.getI());
 						break;
 
 					case MAP_COMBINED:

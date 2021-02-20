@@ -2,7 +2,7 @@ import org.gradle.internal.os.OperatingSystem
 
 plugins {
     id 'java'
-    id "org.jetbrains.kotlin.jvm" version "1.3.70"
+    id "org.jetbrains.kotlin.jvm" version "1.4.30"
     id 'application'
     id 'eclipse'
 }
@@ -63,9 +63,9 @@ dependencies {
 	
 	// uses the kotlin-graphics/imgui library, but exclude vulkan dependencies
 	["gl", "glfw", "core"].each {
-        implementation "com.github.kotlin-graphics.imgui:imgui-$it:v1.76"
+        implementation "com.github.kotlin-graphics.imgui:$it:v1.79"
     }
-	
+    	
 	// 2019-04-21/2019-11-24/2020-03-30: theese are required since kotlin-graphics/imgui does not use the following depencendies
     // with the "api" keyword, and does thus not export the dependencies for use with this application. 
     // That is why the following depencendies are needed directly 
@@ -75,29 +75,32 @@ dependencies {
     implementation ('com.github.kotlin-graphics:uno-sdk:cb9073be566b5ca09e3a6d2a8edfb661a721c751') {
     	exclude group: 'org.lwjgl'
     }*/
-    implementation 'com.github.kotlin-graphics:gln:8dea51af29a2a1d6e51ed3b6d7b06ba2ca2f99b9'
-    implementation 'com.github.kotlin-graphics.glm:glm:1b4ac18dd1a3c23440d3f33596688aac60bc0141'
-    implementation ('com.github.kotlin-graphics:uno-sdk:402f5f495429b7f2178a1d200c32bb5ed2f7e6fa') {
+    
+    
+    implementation 'com.github.kotlin-graphics:gln:3e59f9ea'
+    implementation 'com.github.kotlin-graphics:glm:a4185eec'
+    implementation ('com.github.kotlin-graphics:uno-sdk:2b06aa78') {
     	exclude group: 'org.lwjgl'
     }
-    
-    
-    
-    
+        
     implementation "org.lwjgl:lwjgl:$lwjglVersion"
-	//implementation "org.lwjgl:lwjgl-assimp:$lwjglVersion"
 	implementation "org.lwjgl:lwjgl-glfw:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-remotery:$lwjglVersion"
 	implementation "org.lwjgl:lwjgl-jemalloc:$lwjglVersion"
-	//implementation "org.lwjgl:lwjgl-openal:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-jawt:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-bgfx:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-openal:$lwjglVersion"
 	implementation "org.lwjgl:lwjgl-opengl:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-opengles:$lwjglVersion"
+	implementation "org.lwjgl:lwjgl-vulkan:$lwjglVersion"
 	implementation "org.lwjgl:lwjgl-stb:$lwjglVersion"
 	
 	// Look up which modules and versions of LWJGL are required and add setup the approriate natives.
 	configurations.implementation.dependencies.forEach {
-		if (it.group == "org.lwjgl") {
+		if (it.group == "org.lwjgl" && it.name != "lwjgl-jawt" && it.name != "lwjgl-vulkan") {
             runtimeOnly "org.lwjgl:${it.name}:${it.version}:${lwjglNatives}"
         }
-	}	
+	}
 }
 
 application {

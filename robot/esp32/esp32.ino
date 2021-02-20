@@ -21,8 +21,7 @@ static const char* TAG = "Main";
 // webserver handling the connection on port 5555
 WiFiServer server(SERVER_PORT);
 
-// thread for handling the motor pid control
-pthread_t motorThread;
+sensor_loop_parameters_t sensorLoopParams;
 
 void setup() {
     // enable debug serial
@@ -64,7 +63,7 @@ void startWifi(){
 	Serial.println(ssid);
 	WiFi.begin(ssid, password);
 
-	int failureCounter = 6000 / 200; // 6 seconds
+	int failureCounter = 15000 / 200; // 6 seconds
 	while (WiFi.status() != WL_CONNECTED && --failureCounter > 0) {
 		// blink built in LED to signal that we are trying to connect
 		blinkBuiltinLED(1, 200);
@@ -121,16 +120,24 @@ void loop() {
 	if (client) {                             
 		Serial.println("Client Connected");    
 
+		
 		// home the sensor
-		homeSensor();
+		// homeSensor();
 
 		// start a new thread for the motors and for reading the sensors
 		xTaskCreate(motorLoop, "motorLoop", 10000, NULL, 1, NULL);
-		xTaskCreate(doSensorLoop, "sensorLoop", 10000, &client, 1, NULL);
+
+		// create a queue for the sensor to receive messages on
+		sensorLoopParams.queueHandle =  xQueueCreate(10, sizeof(sensor_queue_item_t));
+
+		sensorLoopParams.client = &client;
+
+
+		xTaskCreate(doSensorLoop, "sensorLoop", 10000, &sensorLoopParams, 2, NULL);
 
 		// do regular loop to handle the incoming control messages
 		while (client.connected()) { 
-			handleCommands(&client);
+			handleCommands(&sensorLoopParams);
 		}
 
 		Serial.println("Client Disconnected");
@@ -138,6 +145,9 @@ void loop() {
 		// stop motors and reset sensor
 		stopMotorLoop();
 		resetSensor();
+
+		sensor_queue_item_t item = {TERMINATE, 0};
+		xQueueSendToBack(sensorLoopParams.queueHandle, &item, portMAX_DELAY);
 	} 
 }
 

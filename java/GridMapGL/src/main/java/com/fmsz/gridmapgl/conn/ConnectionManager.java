@@ -27,6 +27,7 @@ import imgui.FocusedFlag;
 import imgui.ImGui;
 import imgui.MouseButton;
 import imgui.MutableProperty0;
+import imgui.SliderFlag;
 
 /**
  * This class handles the connection (only serial for now) to the robot. Has its own GUI for establishing the serial
@@ -178,7 +179,7 @@ public class ConnectionManager {
 				imgui.popStyleColor(1);
 
 			// speed select slider
-			imgui.dragFloat("Speed", selectedSpeed, 0, 0.01f, 0.0f, 14.0f, "%.2f", 2f);
+			imgui.dragFloat("Speed", selectedSpeed, 0, 0.01f, 0.0f, 14.0f, "%.2f", SliderFlag.None.getI());
 
 			// only send to robot if there was a change
 			if (selectedDirection != lastDirection) {
@@ -214,16 +215,16 @@ public class ConnectionManager {
 			}
 
 			// PID tuning sliders
-			if (imgui.dragFloat("Kp", pidTuningP, 0, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Kp", pidTuningP, 0, 0.001f, 0, 10, "%.4f", SliderFlag.None.getI())) {
 				sendFloat(0x15, pidTuningP[0]);
 			}
-			if (imgui.dragFloat("Ki", pidTuningI, 0, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Ki", pidTuningI, 0, 0.001f, 0, 10, "%.4f", SliderFlag.None.getI())) {
 				sendFloat(0x16, pidTuningI[0]);
 			}
-			if (imgui.dragFloat("Kd", pidTuningD, 0, 0.001f, 0, 10, "%.4f", 1f)) {
+			if (imgui.dragFloat("Kd", pidTuningD, 0, 0.001f, 0, 10, "%.4f", SliderFlag.None.getI())) {
 				sendFloat(0x17, pidTuningD[0]);
 			}
-			if (imgui.dragFloat("Tf = 1/x", pidTuningTf, 0, 0.01f, 0, 100, "%.2f", 1f)) {
+			if (imgui.dragFloat("Tf = 1/x", pidTuningTf, 0, 0.01f, 0, 100, "%.2f", SliderFlag.None.getI())) {
 				sendFloat(0x18, pidTuningTf[0]);
 			}
 		}

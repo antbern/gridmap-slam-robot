@@ -43,7 +43,6 @@ import imgui.impl.glfw.ImplGlfw;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 import kotlin.jvm.functions.Function3;
-import uno.glfw.GlfwMonitor;
 import uno.glfw.GlfwWindow;
 import uno.glfw.VSync;
 import uno.glfw.windowHint.Profile;

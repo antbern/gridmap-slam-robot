@@ -38,7 +38,9 @@ import glm_.vec2.Vec2;
 import imgui.ImGui;
 import imgui.InputTextFlag;
 import imgui.MutableProperty0;
-import imgui.internal.ButtonFlag;
+import imgui.PopupFlag;
+import imgui.internal.sections.ButtonFlag;
+import kotlin.reflect.KMutableProperty0;
 
 /**
  * A class for recording incoming observation and odometry information. Also does playback and saving/loading from file
@@ -81,7 +83,7 @@ public class DataRecorder implements IDataSubscriber {
 
 	private boolean[] pausedArray = { false };
 	private int[] modeSelectArray = { 1 };
-	private MutableProperty0<Boolean> recorderOpen = new MutableProperty0<>(true);
+	private KMutableProperty0<Boolean> recorderOpen = new MutableProperty0<>(true);
 
 	// variables for selecting the appropriate file slot
 	private int[] currentSelectedFileIndex = { 0 };
@@ -138,7 +140,7 @@ public class DataRecorder implements IDataSubscriber {
 				// did we select the "add new file" - action?
 				if (currentSelectedFileIndex[0] == 0) {
 					// show add file popup
-					imgui.openPopup("filename");
+					imgui.openPopup("filename", PopupFlag.None.i);
 				} else
 					currentSelectedFile = availableFilePaths.get(currentSelectedFileIndex[0] - 1);
 			}

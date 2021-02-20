@@ -46,7 +46,7 @@ public class ConnectionThread extends Thread {
 			try {
 				// do we have the 5 bytes needed for a packet?
 				if (dis.available() >= 8) {
-					if (dis.readShort() == 0x5555) {
+					if (dis.readShort() == 0x55AA) {
 						short steps = dis.readShort();
 						short frontDistance = dis.readShort();
 						short backDistance = dis.readShort();
