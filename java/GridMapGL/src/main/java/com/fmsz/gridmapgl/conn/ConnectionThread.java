@@ -46,7 +46,8 @@ public class ConnectionThread extends Thread {
 			try {
 				// do we have the 5 bytes needed for a packet?
 				if (dis.available() >= 8) {
-					if (dis.readShort() == 0x55AA) {
+					// Note that we check against 0xAA55 here (and not 0x55AA as in the ESP code) due to differences in endianness
+					if (dis.readShort() == (short)0xAA55) {
 						short steps = dis.readShort();
 						short frontDistance = dis.readShort();
 						short backDistance = dis.readShort();

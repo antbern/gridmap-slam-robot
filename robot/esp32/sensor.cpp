@@ -260,6 +260,8 @@ void homeSensor(){
 		
 		// step the motor	
 		step_motor(1);
+
+  	    delayMicroseconds(1000);
 		
 		// get a new reading 
 		newVal = analogRead(STEPPER_SENSOR);
